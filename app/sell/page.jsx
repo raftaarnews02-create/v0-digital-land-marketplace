@@ -50,7 +50,6 @@ export default function SellPage() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      toast.error('Please login to list a property')
       router.push('/login')
     }
   }, [isAuthenticated, router])
