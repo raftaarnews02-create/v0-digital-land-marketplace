@@ -2,86 +2,79 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-}
-
 @layer base {
   :root {
-    /* Professional Land Marketplace Theme */
-    /* Primary: Deep Teal (Trust, Growth), Accent: Gold (Value, Premium), Neutrals: Off-white to Charcoal */
-    --background: 0 0% 98%;
-    --foreground: 210 15% 20%;
+    --background: 210 20% 98%;
+    --foreground: 215 25% 15%;
     --card: 0 0% 100%;
-    --card-foreground: 210 15% 20%;
+    --card-foreground: 215 25% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 210 15% 20%;
+    --popover-foreground: 215 25% 15%;
     --primary: 207 89% 34%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 42 84% 61%;
-    --secondary-foreground: 210 15% 20%;
-    --muted: 210 10% 80%;
-    --muted-foreground: 210 5% 50%;
-    --accent: 42 84% 50%;
-    --accent-foreground: 210 15% 20%;
-    --destructive: 0 84.2% 60.2%;
+    --secondary: 210 15% 93%;
+    --secondary-foreground: 215 25% 15%;
+    --muted: 210 15% 95%;
+    --muted-foreground: 215 10% 46%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 210 10% 88%;
-    --input: 210 10% 92%;
+    --border: 214 14% 89%;
+    --input: 214 14% 89%;
     --ring: 207 89% 34%;
     --chart-1: 207 89% 34%;
-    --chart-2: 42 84% 61%;
-    --chart-3: 210 10% 65%;
+    --chart-2: 38 92% 50%;
+    --chart-3: 160 60% 45%;
     --chart-4: 15 100% 57%;
     --chart-5: 200 50% 45%;
     --radius: 0.75rem;
+    --success: 160 60% 45%;
+    --success-foreground: 0 0% 100%;
     --sidebar-background: 210 15% 96%;
     --sidebar-foreground: 210 15% 25%;
     --sidebar-primary: 207 89% 34%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 42 84% 61%;
+    --sidebar-accent: 38 92% 50%;
     --sidebar-accent-foreground: 210 15% 25%;
     --sidebar-border: 210 10% 88%;
     --sidebar-ring: 207 89% 34%;
   }
+
   .dark {
-    --background: 210 20% 12%;
-    --foreground: 0 0% 95%;
-    --card: 210 20% 18%;
-    --card-foreground: 0 0% 95%;
-    --popover: 210 20% 18%;
-    --popover-foreground: 0 0% 95%;
+    --background: 215 25% 10%;
+    --foreground: 210 15% 95%;
+    --card: 215 25% 14%;
+    --card-foreground: 210 15% 95%;
+    --popover: 215 25% 14%;
+    --popover-foreground: 210 15% 95%;
     --primary: 207 89% 50%;
-    --primary-foreground: 210 20% 12%;
-    --secondary: 42 84% 66%;
-    --secondary-foreground: 210 20% 12%;
-    --muted: 210 15% 30%;
-    --muted-foreground: 210 5% 65%;
-    --accent: 42 84% 60%;
-    --accent-foreground: 210 20% 12%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 20% 12%;
-    --border: 210 15% 25%;
-    --input: 210 15% 22%;
+    --primary-foreground: 215 25% 10%;
+    --secondary: 215 20% 20%;
+    --secondary-foreground: 210 15% 95%;
+    --muted: 215 20% 18%;
+    --muted-foreground: 210 10% 60%;
+    --accent: 38 92% 56%;
+    --accent-foreground: 215 25% 10%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 215 25% 10%;
+    --border: 215 20% 22%;
+    --input: 215 20% 20%;
     --ring: 207 89% 50%;
     --chart-1: 207 89% 50%;
-    --chart-2: 42 84% 66%;
-    --chart-3: 210 15% 45%;
+    --chart-2: 38 92% 56%;
+    --chart-3: 160 60% 50%;
     --chart-4: 15 100% 62%;
     --chart-5: 200 50% 55%;
-    --sidebar-background: 210 20% 15%;
-    --sidebar-foreground: 0 0% 90%;
+    --success: 160 60% 50%;
+    --success-foreground: 215 25% 10%;
+    --sidebar-background: 215 25% 12%;
+    --sidebar-foreground: 210 15% 90%;
     --sidebar-primary: 207 89% 50%;
-    --sidebar-primary-foreground: 210 20% 12%;
-    --sidebar-accent: 42 84% 66%;
-    --sidebar-accent-foreground: 210 20% 15%;
-    --sidebar-border: 210 15% 25%;
+    --sidebar-primary-foreground: 215 25% 10%;
+    --sidebar-accent: 38 92% 56%;
+    --sidebar-accent-foreground: 215 25% 12%;
+    --sidebar-border: 215 20% 22%;
     --sidebar-ring: 207 89% 50%;
   }
 }
@@ -92,5 +85,21 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
