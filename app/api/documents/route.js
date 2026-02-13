@@ -1,28 +1,28 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { verifyToken } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyToken } from '@/lib/auth';
 
-export async function POST(request: NextRequest) {
+export async function POST(request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded = await verifyToken(token)
+    const decoded = verifyToken(token);
     if (!decoded) {
-      return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
+      return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
     }
 
-    const formData = await request.formData()
-    const propertyId = formData.get('propertyId') as string
-    const documentType = formData.get('documentType') as string
-    const file = formData.get('file') as File
+    const formData = await request.formData();
+    const propertyId = formData.get('propertyId');
+    const documentType = formData.get('documentType');
+    const file = formData.get('file');
 
     if (!propertyId || !documentType || !file) {
       return NextResponse.json(
         { message: 'Missing required fields' },
         { status: 400 }
-      )
+      );
     }
 
     // Validate file size (max 10MB)
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { message: 'File size exceeds 10MB limit' },
         { status: 400 }
-      )
+      );
     }
 
     // TODO: Upload to file storage service (e.g., AWS S3, Vercel Blob)
@@ -51,35 +51,35 @@ export async function POST(request: NextRequest) {
         },
       },
       { status: 201 }
-    )
+    );
   } catch (error) {
-    console.error('Document upload error:', error)
+    console.error('Document upload error:', error);
     return NextResponse.json(
       { message: 'Failed to upload document' },
       { status: 500 }
-    )
+    );
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded = await verifyToken(token)
+    const decoded = verifyToken(token);
     if (!decoded) {
-      return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
+      return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
     }
 
-    const propertyId = request.nextUrl.searchParams.get('propertyId')
+    const propertyId = request.nextUrl.searchParams.get('propertyId');
 
     if (!propertyId) {
       return NextResponse.json(
         { message: 'Property ID is required' },
         { status: 400 }
-      )
+      );
     }
 
     // TODO: Fetch documents from MongoDB
@@ -118,37 +118,37 @@ export async function GET(request: NextRequest) {
         uploadedAt: '2024-02-02',
         fileSize: '1.8 MB',
       },
-    ]
+    ];
 
-    return NextResponse.json({ documents }, { status: 200 })
+    return NextResponse.json({ documents }, { status: 200 });
   } catch (error) {
-    console.error('Fetch documents error:', error)
+    console.error('Fetch documents error:', error);
     return NextResponse.json(
       { message: 'Failed to fetch documents' },
       { status: 500 }
-    )
+    );
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE(request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded = await verifyToken(token)
+    const decoded = verifyToken(token);
     if (!decoded) {
-      return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
+      return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
     }
 
-    const documentId = request.nextUrl.searchParams.get('documentId')
+    const documentId = request.nextUrl.searchParams.get('documentId');
 
     if (!documentId) {
       return NextResponse.json(
         { message: 'Document ID is required' },
         { status: 400 }
-      )
+      );
     }
 
     // TODO: Delete document from storage and MongoDB
@@ -158,12 +158,12 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json(
       { message: 'Document deleted successfully' },
       { status: 200 }
-    )
+    );
   } catch (error) {
-    console.error('Document deletion error:', error)
+    console.error('Document deletion error:', error);
     return NextResponse.json(
       { message: 'Failed to delete document' },
       { status: 500 }
-    )
+    );
   }
 }

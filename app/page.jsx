@@ -1,23 +1,23 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuth } from '@/lib/auth-context'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { MapPin, DollarSign, TrendingUp } from 'lucide-react'
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { MapPin, DollarSign, TrendingUp } from 'lucide-react';
 
 export default function Home() {
-  const router = useRouter()
-  const { isAuthenticated } = useAuth()
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     // Redirect to login if not authenticated
     if (!isAuthenticated) {
-      router.push('/login')
+      router.push('/login');
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, router]);
 
   // Sample properties for demonstration
   const properties = [
@@ -65,7 +65,7 @@ export default function Home() {
       highestBid: '₹950,000',
       bids: 5,
     },
-  ]
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -99,8 +99,8 @@ export default function Home() {
               variant="ghost"
               size="sm"
               onClick={() => {
-                localStorage.clear()
-                router.push('/login')
+                localStorage.clear();
+                router.push('/login');
               }}
             >
               Logout
@@ -213,5 +213,5 @@ export default function Home() {
         </div>
       </section>
     </div>
-  )
+  );
 }

@@ -4,12 +4,12 @@ import { getDatabase } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 
 // GET all properties with search and filters
-export async function GET(request: NextRequest) {
+export async function GET(request) {
   try {
     const db = await getDatabase();
     const searchParams = request.nextUrl.searchParams;
     
-    const query: any = { status: 'active' };
+    const query = { status: 'active' };
     
     if (searchParams.has('search')) {
       const search = searchParams.get('search');
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST create new property
-export async function POST(request: NextRequest) {
+export async function POST(request) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     const decoded = verifyToken(token);

@@ -18,12 +18,12 @@ export default function LoginPage() {
     password: '',
   })
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
@@ -53,7 +53,7 @@ export default function LoginPage() {
     } finally {
       setLoading(false)
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
@@ -124,7 +124,7 @@ export default function LoginPage() {
 
           {/* Register Link */}
           <p className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{' '}
+            {"Don't have an account? "}
             <Link href="/register" className="text-primary font-medium hover:underline">
               Create one
             </Link>
@@ -139,5 +139,5 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

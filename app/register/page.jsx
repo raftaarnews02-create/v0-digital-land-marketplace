@@ -9,13 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertCircle } from 'lucide-react'
 
-type UserRole = 'buyer' | 'seller' | 'agent'
-
 export default function RegisterPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [role, setRole] = useState<UserRole>('buyer')
+  const [role, setRole] = useState('buyer')
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -24,12 +22,12 @@ export default function RegisterPage() {
     phone: '',
   })
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
@@ -105,7 +103,7 @@ export default function RegisterPage() {
             <div className="space-y-2">
               <label className="block text-sm font-medium">I am a</label>
               <div className="grid grid-cols-3 gap-2">
-                {(['buyer', 'seller', 'agent'] as const).map((r) => (
+                {['buyer', 'seller', 'agent'].map((r) => (
                   <button
                     key={r}
                     type="button"

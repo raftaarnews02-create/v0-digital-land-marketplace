@@ -1,33 +1,33 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { verifyToken } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyToken } from '@/lib/auth';
 
-export async function POST(request: NextRequest) {
+export async function POST(request) {
   try {
     // Verify authentication
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded = await verifyToken(token)
+    const decoded = verifyToken(token);
     if (!decoded) {
-      return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
+      return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
     }
 
-    const { propertyId, bidAmount } = await request.json()
+    const { propertyId, bidAmount } = await request.json();
 
     if (!propertyId || !bidAmount) {
       return NextResponse.json(
         { message: 'Missing required fields' },
         { status: 400 }
-      )
+      );
     }
 
     if (bidAmount <= 0) {
       return NextResponse.json(
         { message: 'Bid amount must be positive' },
         { status: 400 }
-      )
+      );
     }
 
     // TODO: Save bid to MongoDB
@@ -49,26 +49,26 @@ export async function POST(request: NextRequest) {
         },
       },
       { status: 201 }
-    )
+    );
   } catch (error) {
-    console.error('Bid placement error:', error)
+    console.error('Bid placement error:', error);
     return NextResponse.json(
       { message: 'Failed to place bid' },
       { status: 500 }
-    )
+    );
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded = await verifyToken(token)
+    const decoded = verifyToken(token);
     if (!decoded) {
-      return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
+      return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
     }
 
     // TODO: Fetch user's bids from MongoDB
@@ -91,14 +91,14 @@ export async function GET(request: NextRequest) {
         status: 'outbid',
         createdAt: '2024-02-08',
       },
-    ]
+    ];
 
-    return NextResponse.json({ bids: userBids }, { status: 200 })
+    return NextResponse.json({ bids: userBids }, { status: 200 });
   } catch (error) {
-    console.error('Fetch bids error:', error)
+    console.error('Fetch bids error:', error);
     return NextResponse.json(
       { message: 'Failed to fetch bids' },
       { status: 500 }
-    )
+    );
   }
 }

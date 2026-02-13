@@ -1,32 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { verifyToken } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyToken } from '@/lib/auth';
 
-export async function POST(request: NextRequest) {
+export async function POST(request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded = await verifyToken(token)
+    const decoded = verifyToken(token);
     if (!decoded) {
-      return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
+      return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
     }
 
-    const { recipientId, propertyId, message } = await request.json()
+    const { recipientId, propertyId, message } = await request.json();
 
     if (!recipientId || !message) {
       return NextResponse.json(
         { message: 'Missing required fields' },
         { status: 400 }
-      )
+      );
     }
 
     if (message.trim().length === 0) {
       return NextResponse.json(
         { message: 'Message cannot be empty' },
         { status: 400 }
-      )
+      );
     }
 
     // TODO: Save message to MongoDB
@@ -52,35 +52,35 @@ export async function POST(request: NextRequest) {
         },
       },
       { status: 201 }
-    )
+    );
   } catch (error) {
-    console.error('Send message error:', error)
+    console.error('Send message error:', error);
     return NextResponse.json(
       { message: 'Failed to send message' },
       { status: 500 }
-    )
+    );
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded = await verifyToken(token)
+    const decoded = verifyToken(token);
     if (!decoded) {
-      return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
+      return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
     }
 
-    const conversationId = request.nextUrl.searchParams.get('conversationId')
+    const conversationId = request.nextUrl.searchParams.get('conversationId');
 
     if (!conversationId) {
       return NextResponse.json(
         { message: 'Conversation ID is required' },
         { status: 400 }
-      )
+      );
     }
 
     // TODO: Fetch messages from MongoDB
@@ -126,14 +126,14 @@ export async function GET(request: NextRequest) {
         read: false,
         createdAt: '2024-02-12T11:15:00',
       },
-    ]
+    ];
 
-    return NextResponse.json({ messages }, { status: 200 })
+    return NextResponse.json({ messages }, { status: 200 });
   } catch (error) {
-    console.error('Fetch messages error:', error)
+    console.error('Fetch messages error:', error);
     return NextResponse.json(
       { message: 'Failed to fetch messages' },
       { status: 500 }
-    )
+    );
   }
 }

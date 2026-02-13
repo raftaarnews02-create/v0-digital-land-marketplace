@@ -9,15 +9,12 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { MapPin, Search, Grid, List as ListIcon } from 'lucide-react'
 
-type ViewMode = 'grid' | 'list'
-type PropertyType = 'all' | 'agricultural' | 'residential' | 'commercial'
-
 export default function PropertiesPage() {
   const router = useRouter()
   const { isAuthenticated } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedType, setSelectedType] = useState<PropertyType>('all')
-  const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const [selectedType, setSelectedType] = useState('all')
+  const [viewMode, setViewMode] = useState('grid')
   const [priceRange, setPriceRange] = useState([0, 5000000])
 
   // Mock property data
@@ -169,10 +166,10 @@ export default function PropertiesPage() {
                 <p className="text-sm font-medium mb-3">Property Type</p>
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { value: 'all' as PropertyType, label: 'All Properties' },
-                    { value: 'agricultural' as PropertyType, label: 'Agricultural' },
-                    { value: 'residential' as PropertyType, label: 'Residential' },
-                    { value: 'commercial' as PropertyType, label: 'Commercial' },
+                    { value: 'all', label: 'All Properties' },
+                    { value: 'agricultural', label: 'Agricultural' },
+                    { value: 'residential', label: 'Residential' },
+                    { value: 'commercial', label: 'Commercial' },
                   ].map((type) => (
                     <Button
                       key={type.value}

@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { getDatabase } from '@/lib/db';
 import jwt from 'jsonwebtoken';
 
-export async function POST(request: NextRequest) {
+export async function POST(request) {
   try {
     const { email, password } = await request.json();
 

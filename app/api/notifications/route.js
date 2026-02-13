@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { verifyToken } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyToken } from '@/lib/auth';
 
-export async function GET(request: NextRequest) {
+export async function GET(request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded = await verifyToken(token)
+    const decoded = verifyToken(token);
     if (!decoded) {
-      return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
+      return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
     }
 
     // TODO: Fetch notifications from MongoDB
@@ -53,37 +53,37 @@ export async function GET(request: NextRequest) {
         read: true,
         createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), // 5 hours ago
       },
-    ]
+    ];
 
-    return NextResponse.json({ notifications }, { status: 200 })
+    return NextResponse.json({ notifications }, { status: 200 });
   } catch (error) {
-    console.error('Fetch notifications error:', error)
+    console.error('Fetch notifications error:', error);
     return NextResponse.json(
       { message: 'Failed to fetch notifications' },
       { status: 500 }
-    )
+    );
   }
 }
 
-export async function PATCH(request: NextRequest) {
+export async function PATCH(request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded = await verifyToken(token)
+    const decoded = verifyToken(token);
     if (!decoded) {
-      return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
+      return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
     }
 
-    const { notificationId, action } = await request.json()
+    const { notificationId, action } = await request.json();
 
     if (!notificationId || !['mark_read', 'mark_unread', 'delete'].includes(action)) {
       return NextResponse.json(
         { message: 'Invalid request' },
         { status: 400 }
-      )
+      );
     }
 
     // TODO: Update notification in MongoDB
@@ -99,12 +99,12 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json(
       { message: `Notification ${action}` },
       { status: 200 }
-    )
+    );
   } catch (error) {
-    console.error('Update notification error:', error)
+    console.error('Update notification error:', error);
     return NextResponse.json(
       { message: 'Failed to update notification' },
       { status: 500 }
-    )
+    );
   }
 }
