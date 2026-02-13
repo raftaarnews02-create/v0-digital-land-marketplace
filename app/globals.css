@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  :root {
+    /* Professional Land Marketplace Theme */
+    /* Primary: Deep Teal (Trust, Growth), Accent: Gold (Value, Premium), Neutrals: Off-white to Charcoal */
+    --background: 0 0% 98%;
+    --foreground: 210 15% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 15% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 15% 20%;
+    --primary: 207 89% 34%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 42 84% 61%;
+    --secondary-foreground: 210 15% 20%;
+    --muted: 210 10% 80%;
+    --muted-foreground: 210 5% 50%;
+    --accent: 42 84% 50%;
+    --accent-foreground: 210 15% 20%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 210 10% 88%;
+    --input: 210 10% 92%;
+    --ring: 207 89% 34%;
+    --chart-1: 207 89% 34%;
+    --chart-2: 42 84% 61%;
+    --chart-3: 210 10% 65%;
+    --chart-4: 15 100% 57%;
+    --chart-5: 200 50% 45%;
+    --radius: 0.75rem;
+    --sidebar-background: 210 15% 96%;
+    --sidebar-foreground: 210 15% 25%;
+    --sidebar-primary: 207 89% 34%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 42 84% 61%;
+    --sidebar-accent-foreground: 210 15% 25%;
+    --sidebar-border: 210 10% 88%;
+    --sidebar-ring: 207 89% 34%;
+  }
+  .dark {
+    --background: 210 20% 12%;
+    --foreground: 0 0% 95%;
+    --card: 210 20% 18%;
+    --card-foreground: 0 0% 95%;
+    --popover: 210 20% 18%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 207 89% 50%;
+    --primary-foreground: 210 20% 12%;
+    --secondary: 42 84% 66%;
+    --secondary-foreground: 210 20% 12%;
+    --muted: 210 15% 30%;
+    --muted-foreground: 210 5% 65%;
+    --accent: 42 84% 60%;
+    --accent-foreground: 210 20% 12%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 20% 12%;
+    --border: 210 15% 25%;
+    --input: 210 15% 22%;
+    --ring: 207 89% 50%;
+    --chart-1: 207 89% 50%;
+    --chart-2: 42 84% 66%;
+    --chart-3: 210 15% 45%;
+    --chart-4: 15 100% 62%;
+    --chart-5: 200 50% 55%;
+    --sidebar-background: 210 20% 15%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 207 89% 50%;
+    --sidebar-primary-foreground: 210 20% 12%;
+    --sidebar-accent: 42 84% 66%;
+    --sidebar-accent-foreground: 210 20% 15%;
+    --sidebar-border: 210 15% 25%;
+    --sidebar-ring: 207 89% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
