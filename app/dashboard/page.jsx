@@ -1,17 +1,36 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Heart, MessageCircle, Settings } from 'lucide-react'
+import {
+  Gavel, Heart, ListPlus, Eye, TrendingUp, ArrowRight,
+  ChevronRight, Clock, Package, Bell
+} from 'lucide-react'
+
+const MOCK_BIDS = [
+  { id: '1', property: 'Fertile Agricultural Land', location: 'Ludhiana, Punjab', bid: 550000, status: 'winning', time: '2h ago' },
+  { id: '2', property: 'Commercial Business Plot', location: 'Whitefield, Bangalore', bid: 2100000, status: 'outbid', time: '5h ago' },
+  { id: '3', property: 'Apple Orchard Land', location: 'Shimla, HP', bid: 900000, status: 'pending', time: '1d ago' },
+]
+
+const MOCK_SAVED = [
+  { id: '1', title: 'Prime Agricultural Land', location: 'Punjab', area: '2.5 acres' },
+  { id: '5', title: 'Farmhouse Plot Near Highway', location: 'Pune', area: '2000 sqft' },
+]
+
+const MOCK_LISTINGS = [
+  { id: '1', title: 'Orchard Land with Trees', location: 'Shimla, HP', status: 'active', views: 245, bids: 8 },
+  { id: '2', title: 'Industrial Zone Land', location: 'Ahmedabad, GJ', status: 'review', views: 12, bids: 0 },
+]
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { user, isAuthenticated, logout } = useAuth()
+  const { user, isAuthenticated } = useAuth()
+  const [activeTab, setActiveTab] = useState('bids')
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -20,273 +39,194 @@ export default function DashboardPage() {
   }, [isAuthenticated, router])
 
   if (!isAuthenticated || !user) {
-    return null
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
   }
 
-  // Mock data for user's activities
-  const myBids = [
-    {
-      id: '1',
-      property: 'Agricultural Land - Punjab',
-      bid: '₹550,000',
-      status: 'Winning',
-      bidDate: '2024-02-10',
-    },
-    {
-      id: '2',
-      property: 'Commercial Plot - Bangalore',
-      bid: '₹2,100,000',
-      status: 'Outbid',
-      bidDate: '2024-02-08',
-    },
-  ]
+  const formatPrice = (price) => {
+    if (price >= 10000000) return `${(price / 10000000).toFixed(1)} Cr`
+    if (price >= 100000) return `${(price / 100000).toFixed(1)} L`
+    return price.toLocaleString('en-IN')
+  }
 
-  const savedProperties = [
-    {
-      id: '1',
-      title: 'Prime Agricultural Land',
-      location: 'Punjab',
-      area: '2.5 acres',
-      savedDate: '2024-02-12',
-    },
-    {
-      id: '2',
-      title: 'Urban Residential Plot',
-      location: 'Mumbai',
-      area: '1200 sqft',
-      savedDate: '2024-02-10',
-    },
-  ]
+  const isSeller = user.role === 'seller' || user.role === 'agent' || user.role === 'admin'
 
-  const myListings =
-    user.role === 'seller' || user.role === 'agent'
-      ? [
-          {
-            id: '1',
-            title: 'Orchard Land',
-            location: 'Himachal Pradesh',
-            status: 'Active',
-            views: 245,
-            bids: 8,
-          },
-        ]
-      : []
+  const statusColors = {
+    winning: 'bg-primary text-primary-foreground',
+    outbid: 'bg-destructive/10 text-destructive',
+    pending: 'bg-accent/10 text-accent',
+    active: 'bg-primary/10 text-primary',
+    review: 'bg-accent/10 text-accent',
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-card border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold">
-              LH
-            </div>
-            <span className="font-bold text-lg">LandHub</span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" onClick={() => router.push('/')}>
-              Browse
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                logout()
-                router.push('/login')
-              }}
-            >
-              Logout
-            </Button>
-          </div>
+    <div className="bg-background min-h-screen">
+      {/* Welcome Section */}
+      <div className="px-4 pt-6 pb-4">
+        <div className="max-w-lg mx-auto">
+          <h1 className="text-xl font-bold text-foreground">
+            Hello, {user.fullName || user.name || 'User'}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {isSeller ? 'Manage your listings and track bids' : 'Track your bids and saved properties'}
+          </p>
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
-        <div className="space-y-6 mb-12">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Welcome, {user.name}!</h1>
-            <p className="text-muted-foreground mt-2">
-              Manage your bids, saved properties, and listings all in one place
-            </p>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Active Bids</p>
-                  <p className="text-3xl font-bold text-primary">
-                    {myBids.filter((b) => b.status === 'Winning').length}
-                  </p>
-                </div>
+      {/* Quick Stats */}
+      <div className="px-4 pb-4">
+        <div className="max-w-lg mx-auto grid grid-cols-3 gap-3">
+          <Card className="cursor-pointer" onClick={() => setActiveTab('bids')}>
+            <CardContent className="pt-3 pb-3 px-3 text-center">
+              <Gavel className="w-5 h-5 text-primary mx-auto" />
+              <p className="text-lg font-bold text-foreground mt-1">{MOCK_BIDS.filter(b => b.status === 'winning').length}</p>
+              <p className="text-[10px] text-muted-foreground">Active Bids</p>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer" onClick={() => setActiveTab('saved')}>
+            <CardContent className="pt-3 pb-3 px-3 text-center">
+              <Heart className="w-5 h-5 text-destructive mx-auto" />
+              <p className="text-lg font-bold text-foreground mt-1">{MOCK_SAVED.length}</p>
+              <p className="text-[10px] text-muted-foreground">Saved</p>
+            </CardContent>
+          </Card>
+          {isSeller ? (
+            <Card className="cursor-pointer" onClick={() => setActiveTab('listings')}>
+              <CardContent className="pt-3 pb-3 px-3 text-center">
+                <Package className="w-5 h-5 text-accent mx-auto" />
+                <p className="text-lg font-bold text-foreground mt-1">{MOCK_LISTINGS.length}</p>
+                <p className="text-[10px] text-muted-foreground">Listings</p>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Saved Properties</p>
-                  <p className="text-3xl font-bold text-secondary">{savedProperties.length}</p>
-                </div>
+          ) : (
+            <Card className="cursor-pointer" onClick={() => router.push('/notifications')}>
+              <CardContent className="pt-3 pb-3 px-3 text-center">
+                <Bell className="w-5 h-5 text-accent mx-auto" />
+                <p className="text-lg font-bold text-foreground mt-1">4</p>
+                <p className="text-[10px] text-muted-foreground">Alerts</p>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Account Status</p>
-                  <Badge className="w-fit mt-2 bg-accent text-accent-foreground">
-                    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Tabs Section */}
-        <Tabs defaultValue="bids" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="bids">My Bids</TabsTrigger>
-            <TabsTrigger value="saved">Saved Properties</TabsTrigger>
-            {(user.role === 'seller' || user.role === 'agent') && (
-              <TabsTrigger value="listings">My Listings</TabsTrigger>
-            )}
-          </TabsList>
-
-          {/* My Bids Tab */}
-          <TabsContent value="bids" className="space-y-4">
-            <div className="space-y-4">
-              {myBids.length > 0 ? (
-                myBids.map((bid) => (
-                  <Card key={bid.id} className="overflow-hidden">
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <p className="font-medium text-foreground">{bid.property}</p>
-                          <p className="text-sm text-muted-foreground">Bid placed on {bid.bidDate}</p>
-                        </div>
-                        <div className="text-right space-y-2">
-                          <p className="font-bold text-primary">{bid.bid}</p>
-                          <Badge
-                            variant={bid.status === 'Winning' ? 'default' : 'outline'}
-                            className={
-                              bid.status === 'Winning'
-                                ? 'bg-accent text-accent-foreground'
-                                : ''
-                            }
-                          >
-                            {bid.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              ) : (
-                <Card className="border-dashed">
-                  <CardContent className="pt-6 text-center">
-                    <p className="text-muted-foreground">No bids yet. Start bidding on properties!</p>
-                    <Button className="mt-4" onClick={() => router.push('/')}>
-                      Browse Properties
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </TabsContent>
-
-          {/* Saved Properties Tab */}
-          <TabsContent value="saved" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {savedProperties.length > 0 ? (
-                savedProperties.map((prop) => (
-                  <Card key={prop.id} className="overflow-hidden">
-                    <CardContent className="pt-6">
-                      <div className="space-y-4">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <p className="font-medium text-foreground">{prop.title}</p>
-                            <p className="text-sm text-muted-foreground">{prop.location}</p>
-                          </div>
-                          <Heart className="w-5 h-5 text-accent fill-accent" />
-                        </div>
-                        <p className="text-sm text-muted-foreground">{prop.area}</p>
-                        <Button className="w-full" variant="outline">
-                          View Details
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              ) : (
-                <Card className="border-dashed md:col-span-2">
-                  <CardContent className="pt-6 text-center">
-                    <p className="text-muted-foreground">No saved properties yet</p>
-                    <Button className="mt-4" onClick={() => router.push('/')}>
-                      Explore Properties
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </TabsContent>
-
-          {/* My Listings Tab (Seller/Agent only) */}
-          {(user.role === 'seller' || user.role === 'agent') && (
-            <TabsContent value="listings" className="space-y-4">
-              <Button className="mb-4">Add New Listing</Button>
-              <div className="space-y-4">
-                {myListings.length > 0 ? (
-                  myListings.map((listing) => (
-                    <Card key={listing.id} className="overflow-hidden">
-                      <CardContent className="pt-6">
-                        <div className="space-y-4">
-                          <div className="space-y-1">
-                            <p className="font-medium text-foreground">{listing.title}</p>
-                            <p className="text-sm text-muted-foreground">{listing.location}</p>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4 py-2">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Views</p>
-                              <p className="text-lg font-bold text-primary">{listing.views}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Active Bids</p>
-                              <p className="text-lg font-bold text-accent">{listing.bids}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between pt-2 border-t border-border">
-                            <Badge className="bg-green-600">{listing.status}</Badge>
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="sm">
-                                Edit
-                              </Button>
-                              <Button variant="outline" size="sm">
-                                View Bids
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                ) : (
-                  <Card className="border-dashed">
-                    <CardContent className="pt-6 text-center">
-                      <p className="text-muted-foreground">No active listings</p>
-                      <Button className="mt-4">Create New Listing</Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </TabsContent>
           )}
-        </Tabs>
-      </main>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="px-4">
+        <div className="max-w-lg mx-auto">
+          <div className="flex bg-muted rounded-xl p-1 gap-1">
+            {[
+              { key: 'bids', label: 'My Bids' },
+              { key: 'saved', label: 'Saved' },
+              ...(isSeller ? [{ key: 'listings', label: 'Listings' }] : []),
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                  activeTab === tab.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      <div className="px-4 py-4 pb-24">
+        <div className="max-w-lg mx-auto space-y-3">
+          {/* Bids Tab */}
+          {activeTab === 'bids' && (
+            <>
+              {MOCK_BIDS.map((bid) => (
+                <Card key={bid.id} className="cursor-pointer" onClick={() => router.push(`/properties/${bid.id}`)}>
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-foreground">{bid.property}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{bid.location}</p>
+                        <div className="flex items-center gap-1 mt-1.5 text-[10px] text-muted-foreground">
+                          <Clock className="w-3 h-3" /> {bid.time}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-primary">{`₹${formatPrice(bid.bid)}`}</p>
+                        <Badge className={`mt-1 text-[10px] ${statusColors[bid.status] || ''}`}>
+                          {bid.status.charAt(0).toUpperCase() + bid.status.slice(1)}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              <Button variant="outline" className="w-full" onClick={() => router.push('/properties')}>
+                Browse More Properties <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </>
+          )}
+
+          {/* Saved Tab */}
+          {activeTab === 'saved' && (
+            <>
+              {MOCK_SAVED.map((prop) => (
+                <Card key={prop.id} className="cursor-pointer" onClick={() => router.push(`/properties/${prop.id}`)}>
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{prop.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{prop.location} - {prop.area}</p>
+                      </div>
+                      <Heart className="w-5 h-5 fill-destructive text-destructive flex-shrink-0" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              <Button variant="outline" className="w-full" onClick={() => router.push('/properties')}>
+                Discover Properties <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </>
+          )}
+
+          {/* Listings Tab (Seller) */}
+          {activeTab === 'listings' && isSeller && (
+            <>
+              <Button className="w-full" onClick={() => router.push('/sell')}>
+                <ListPlus className="w-4 h-4 mr-2" /> Create New Listing
+              </Button>
+              {MOCK_LISTINGS.map((listing) => (
+                <Card key={listing.id}>
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{listing.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{listing.location}</p>
+                      </div>
+                      <Badge className={`text-[10px] ${statusColors[listing.status] || ''}`}>
+                        {listing.status === 'review' ? 'Under Review' : 'Active'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-4 mt-3 pt-2 border-t border-border">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Eye className="w-3 h-3" /> {listing.views} views
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Gavel className="w-3 h-3" /> {listing.bids} bids
+                      </div>
+                      <Button variant="outline" size="sm" className="ml-auto h-7 text-xs" onClick={() => router.push(`/properties/${listing.id}`)}>
+                        View <ChevronRight className="w-3 h-3 ml-0.5" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

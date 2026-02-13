@@ -72,9 +72,9 @@ export async function POST(request) {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     const decoded = verifyToken(token);
 
-    if (!decoded || decoded.role !== 'seller') {
+    if (!decoded) {
       return NextResponse.json(
-        { error: 'Unauthorized - seller role required' },
+        { error: 'Unauthorized' },
         { status: 403 }
       );
     }

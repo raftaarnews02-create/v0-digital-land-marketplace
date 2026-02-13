@@ -5,18 +5,16 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertCircle } from 'lucide-react'
+import { toast } from 'sonner'
+import { AlertCircle, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  })
+  const [showPassword, setShowPassword] = useState(false)
+  const [formData, setFormData] = useState({ email: '', password: '' })
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -34,54 +32,49 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       })
-
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.message || 'Login failed')
+        throw new Error(data.error || data.message || 'Login failed')
       }
 
-      // Store token
       if (data.token) {
         localStorage.setItem('token', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
+        // Force reload auth state
+        window.location.href = '/dashboard'
       }
-
-      router.push('/dashboard')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      setError(err.message || 'An error occurred')
     } finally {
       setLoading(false)
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-2 text-center">
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold text-xl">
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex-1 flex flex-col justify-center px-6 py-12">
+        <div className="max-w-sm mx-auto w-full">
+          {/* Logo */}
+          <div className="flex items-center justify-center mb-8">
+            <div className="w-14 h-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-bold text-2xl">
               LH
             </div>
           </div>
-          <CardTitle className="text-2xl">Welcome Back</CardTitle>
-          <CardDescription>Sign in to your LandHub account</CardDescription>
-        </CardHeader>
 
-        <CardContent className="space-y-4">
+          <h1 className="text-2xl font-bold text-foreground text-center">Welcome Back</h1>
+          <p className="text-sm text-muted-foreground text-center mt-2">Sign in to your LandHub account</p>
+
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="mt-6">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email */}
+          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
             <div className="space-y-2">
-              <label htmlFor="email" className="block text-sm font-medium">
-                Email
-              </label>
+              <label htmlFor="email" className="text-sm font-medium text-foreground">Email</label>
               <Input
                 id="email"
                 name="email"
@@ -90,54 +83,60 @@ export default function LoginPage() {
                 value={formData.email}
                 onChange={handleChange}
                 required
+                className="h-12 rounded-xl"
+                autoComplete="email"
               />
             </div>
 
-            {/* Password */}
             <div className="space-y-2">
-              <label htmlFor="password" className="block text-sm font-medium">
-                Password
-              </label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={handleChange}
-                required
-              />
+              <div className="flex justify-between items-center">
+                <label htmlFor="password" className="text-sm font-medium text-foreground">Password</label>
+                <Link href="#" className="text-xs text-primary font-medium hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  className="h-12 rounded-xl pr-10"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
 
-            {/* Forgot Password */}
-            <div className="text-right">
-              <Link href="#" className="text-sm text-primary hover:underline font-medium">
-                Forgot password?
-              </Link>
-            </div>
-
-            {/* Submit */}
-            <Button type="submit" className="w-full" disabled={loading} size="lg">
+            <Button type="submit" className="w-full h-12 rounded-xl text-base font-semibold" disabled={loading}>
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
 
-          {/* Register Link */}
-          <p className="text-center text-sm text-muted-foreground">
+          <p className="text-center text-sm text-muted-foreground mt-6">
             {"Don't have an account? "}
-            <Link href="/register" className="text-primary font-medium hover:underline">
+            <Link href="/register" className="text-primary font-semibold hover:underline">
               Create one
             </Link>
           </p>
 
-          {/* Demo Note */}
-          <div className="pt-4 border-t border-border">
+          <div className="mt-8 pt-6 border-t border-border">
             <p className="text-xs text-muted-foreground text-center">
-              Demo credentials: user@example.com / password
+              Demo: user@example.com / password
             </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
-  );
+  )
 }
