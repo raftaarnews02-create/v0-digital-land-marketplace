@@ -41,8 +41,10 @@ export default function LoginPage() {
       if (data.token) {
         localStorage.setItem('token', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
-        // Force reload auth state
-        window.location.href = '/dashboard'
+        
+        toast.success('Login successful')
+        router.push('/dashboard')
+        router.refresh()
       }
     } catch (err) {
       setError(err.message || 'An error occurred')

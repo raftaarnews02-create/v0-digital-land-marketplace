@@ -33,8 +33,16 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('bids')
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login')
+    const token = localStorage.getItem('token')
+    // Only redirect if not authenticated AND no token is found in storage
+    if (!isAuthenticated && !token) {
+      router.replace('/login')
+    }
+
+    // Safety fallback: If token exists but auth context is stuck (e.g. after router.push), force reload
+    if (token && !isAuthenticated) {
+      const timer = setTimeout(() => window.location.reload(), 1000)
+      return () => clearTimeout(timer)
     }
   }, [isAuthenticated, router])
 
