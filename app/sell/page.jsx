@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { ArrowLeft, ArrowRight, Upload, MapPin, FileText, CheckCircle2, Camera, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Upload, MapPin, FileText, CheckCircle2, Camera, X, Loader2, ImagePlus } from 'lucide-react'
 
 const STATES = [
   'Andhra Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat',
@@ -46,7 +46,9 @@ export default function SellPage() {
     khasraNo: '',
     khataNo: '',
     documents: [],
+    images: [],
   })
+  const [uploadingImages, setUploadingImages] = useState(false)
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -77,6 +79,43 @@ export default function SellPage() {
 
   const prevStep = () => setStep((s) => Math.max(s - 1, 0))
 
+  const handleImageUpload = async (files) => {
+    const fileArr = Array.from(files).slice(0, 10 - formData.images.length)
+    if (fileArr.length === 0) return
+    setUploadingImages(true)
+    const token = localStorage.getItem('token')
+    try {
+      const uploaded = await Promise.all(
+        fileArr.map(async (file) => {
+          const fd = new FormData()
+          fd.append('file', file)
+          fd.append('type', 'image')
+          const res = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: fd,
+          })
+          if (res.ok) {
+            const d = await res.json()
+            return d.url
+          }
+          return null
+        })
+      )
+      const valid = uploaded.filter(Boolean)
+      setFormData(prev => ({ ...prev, images: [...prev.images, ...valid] }))
+      if (valid.length) toast.success(`${valid.length} photo${valid.length > 1 ? 's' : ''} uploaded`)
+    } catch {
+      toast.error('Failed to upload images')
+    } finally {
+      setUploadingImages(false)
+    }
+  }
+
+  const removeImage = (idx) => {
+    setFormData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }))
+  }
+
   const handleSubmit = async () => {
     setSubmitting(true)
     try {
@@ -91,6 +130,9 @@ export default function SellPage() {
           area: parseFloat(formData.area),
           areaUnit: formData.areaUnit,
           basePrice: parseInt(formData.basePrice),
+          khasraNo: formData.khasraNo,
+          khataNo: formData.khataNo,
+          images: formData.images,
           location: {
             address: formData.address,
             city: formData.city,
@@ -324,23 +366,64 @@ export default function SellPage() {
                 )
               })}
 
-              {/* Add Photos */}
-              <Card>
-                <CardContent className="pt-4 pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <Camera className="w-5 h-5 text-accent" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">Property Photos</p>
-                      <p className="text-[10px] text-muted-foreground">Add up to 10 photos of your land</p>
-                    </div>
-                    <button className="px-3 py-1.5 rounded-lg text-xs font-medium bg-accent/10 text-accent" onClick={() => toast.info('Photo upload coming soon')}>
-                      Add
-                    </button>
+              {/* Property Photos */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-foreground">Property Photos</label>
+                  <span className="text-xs text-muted-foreground">{formData.images.length}/10 photos</span>
+                </div>
+
+                {/* Upload zone */}
+                {formData.images.length < 10 && (
+                  <label className={`flex flex-col items-center justify-center gap-2 h-32 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${
+                    uploadingImages ? 'border-primary/50 bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-primary/5'
+                  }`}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      disabled={uploadingImages}
+                      onChange={(e) => e.target.files?.length && handleImageUpload(e.target.files)}
+                    />
+                    {uploadingImages ? (
+                      <>
+                        <Loader2 className="w-7 h-7 text-primary animate-spin" />
+                        <p className="text-xs text-primary font-medium">Uploading photos...</p>
+                      </>
+                    ) : (
+                      <>
+                        <ImagePlus className="w-7 h-7 text-muted-foreground" />
+                        <p className="text-xs text-muted-foreground">Tap to add photos · up to 10</p>
+                        <p className="text-[10px] text-muted-foreground/60">JPG, PNG, WEBP accepted</p>
+                      </>
+                    )}
+                  </label>
+                )}
+
+                {/* Previews */}
+                {formData.images.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 mt-3">
+                    {formData.images.map((url, idx) => (
+                      <div key={idx} className="relative rounded-xl overflow-hidden aspect-square bg-muted">
+                        <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => removeImage(idx)}
+                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
+                          aria-label="Remove photo"
+                        >
+                          <X className="w-3 h-3 text-white" />
+                        </button>
+                        {idx === 0 && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[9px] font-bold text-center py-0.5">
+                            COVER
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                </CardContent>
-              </Card>
+                )}
+              </div>
             </>
           )}
 
@@ -375,6 +458,10 @@ export default function SellPage() {
                   <div className="flex justify-between">
                     <span className="text-xs text-muted-foreground">Documents</span>
                     <span className="text-sm font-medium text-foreground">{formData.documents.length} uploaded</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-muted-foreground">Photos</span>
+                    <span className="text-sm font-medium text-foreground">{formData.images.length} photo{formData.images.length !== 1 ? 's' : ''}</span>
                   </div>
                   {formData.khasraNo && (
                     <div className="flex justify-between">

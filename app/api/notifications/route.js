@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ObjectId } from 'mongodb';
+import { getDatabase } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
 
 export async function GET(request) {
@@ -13,49 +15,16 @@ export async function GET(request) {
       return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
     }
 
-    // TODO: Fetch notifications from MongoDB
-    // const notifications = await db.collection('notifications')
-    //   .find({ userId: decoded.id })
-    //   .sort({ createdAt: -1 })
-    //   .limit(20)
-    //   .toArray()
+    const db = await getDatabase();
+    
+    // Fetch notifications from MongoDB
+    const notifications = await db.collection('notifications')
+      .find({ userId: new ObjectId(decoded.userId) })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .toArray();
 
-    const notifications = [
-      {
-        id: 'notif_1',
-        type: 'bid_placed',
-        title: 'New Bid on Your Property',
-        message: 'Someone placed a bid of ₹550,000 on Fertile Agricultural Land',
-        read: false,
-        createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 minutes ago
-      },
-      {
-        id: 'notif_2',
-        type: 'bid_outbid',
-        title: 'You Have Been Outbid',
-        message: 'Your bid of ₹2,100,000 has been exceeded',
-        read: false,
-        createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
-      },
-      {
-        id: 'notif_3',
-        type: 'offer_received',
-        title: 'New Offer Received',
-        message: 'Ananya Singh made an offer of ₹900,000 for Orchard Land',
-        read: true,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
-      },
-      {
-        id: 'notif_4',
-        type: 'document_verified',
-        title: 'Document Verified',
-        message: 'Your Khasra Certificate has been verified',
-        read: true,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), // 5 hours ago
-      },
-    ];
-
-    return NextResponse.json({ notifications }, { status: 200 });
+    return NextResponse.json({ data: notifications }, { status: 200 });
   } catch (error) {
     console.error('Fetch notifications error:', error);
     return NextResponse.json(
@@ -86,15 +55,17 @@ export async function PATCH(request) {
       );
     }
 
-    // TODO: Update notification in MongoDB
-    // if (action === 'delete') {
-    //   await db.collection('notifications').deleteOne({ _id: new ObjectId(notificationId) })
-    // } else {
-    //   await db.collection('notifications').updateOne(
-    //     { _id: new ObjectId(notificationId) },
-    //     { $set: { read: action === 'mark_read' } }
-    //   )
-    // }
+    const db = await getDatabase();
+    const notifId = new ObjectId(notificationId);
+
+    if (action === 'delete') {
+      await db.collection('notifications').deleteOne({ _id: notifId, userId: new ObjectId(decoded.userId) });
+    } else {
+      await db.collection('notifications').updateOne(
+        { _id: notifId, userId: new ObjectId(decoded.userId) },
+        { $set: { read: action === 'mark_read' } }
+      );
+    }
 
     return NextResponse.json(
       { message: `Notification ${action}` },

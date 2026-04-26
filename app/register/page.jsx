@@ -1,14 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertCircle, Eye, EyeOff, User, Store } from 'lucide-react'
 
 export default function RegisterPage() {
+  const router = useRouter()
+
+  useEffect(() => {
+    router.replace('/create-account')
+  }, [router])
+
+  return null
+}
+
+// Legacy register form kept for reference — now replaced by /create-account
+function _LegacyRegisterPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -70,7 +76,13 @@ export default function RegisterPage() {
       if (loginRes.ok && loginData.token) {
         localStorage.setItem('token', loginData.token)
         localStorage.setItem('user', JSON.stringify(loginData.user))
-        window.location.href = '/dashboard'
+        
+        // Role-based redirection after registration
+        if (loginData.user.role === 'seller' || loginData.user.role === 'agent') {
+          window.location.href = '/dashboard'
+        } else {
+          window.location.href = '/'
+        }
       } else {
         router.push('/login')
       }

@@ -9,9 +9,22 @@ export async function GET(request) {
     const db = await getDatabase();
     const searchParams = request.nextUrl.searchParams;
     
-    const query = { status: 'active' };
+    // Check if fetching seller's properties
+    const sellerId = searchParams.get('sellerId');
+    const status = searchParams.get('status');
     
-    if (searchParams.has('search')) {
+    let query = {};
+    
+    // If sellerId provided, fetch only that seller's properties (including pending/rejected)
+    if (sellerId) {
+      query.sellerId = new ObjectId(sellerId);
+      // Don't filter by status when fetching seller's own properties
+    } else {
+      // Public listings only show active properties
+      query.status = status || 'active';
+    }
+    
+    if (searchParams.has('search') && !sellerId) {
       const search = searchParams.get('search');
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
@@ -19,15 +32,15 @@ export async function GET(request) {
       ];
     }
 
-    if (searchParams.has('category')) {
+    if (searchParams.has('category') && !sellerId) {
       query.category = searchParams.get('category');
     }
 
-    if (searchParams.has('minPrice')) {
+    if (searchParams.has('minPrice') && !sellerId) {
       query.basePrice = { $gte: parseInt(searchParams.get('minPrice') || '0') };
     }
 
-    if (searchParams.has('maxPrice')) {
+    if (searchParams.has('maxPrice') && !sellerId) {
       if (query.basePrice) {
         query.basePrice.$lte = parseInt(searchParams.get('maxPrice') || '999999999');
       } else {
@@ -42,6 +55,7 @@ export async function GET(request) {
     const properties = await db
       .collection('properties')
       .find(query)
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .toArray();
@@ -100,16 +114,28 @@ export async function POST(request) {
       basePrice,
       images: images || [],
       documents: [],
-      status: 'draft',
+      status: 'pending', // Set to pending for admin verification
       category,
+      rejectionReason: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
     const result = await db.collection('properties').insertOne(newProperty);
 
+    // Create notification for the seller
+    await db.collection('notifications').insertOne({
+      userId: new ObjectId(decoded.userId),
+      type: 'system',
+      title: 'Property Submitted',
+      message: `Your property "${title}" has been submitted for verification. It will be reviewed by our admin team.`,
+      relatedId: result.insertedId,
+      read: false,
+      createdAt: new Date(),
+    });
+
     return NextResponse.json(
-      { _id: result.insertedId, ...newProperty },
+      { _id: result.insertedId, ...newProperty, message: 'Property submitted for verification' },
       { status: 201 }
     );
   } catch (error) {

@@ -1,22 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import PropertyCard from '@/components/property-card'
-import { Search, MapPin, TrendingUp, Shield, FileText, Gavel, ArrowRight, ChevronRight } from 'lucide-react'
-
-const FEATURED_PROPERTIES = [
-  { id: '1', title: 'Fertile Agricultural Land', location: 'Ludhiana, Punjab', area: '2.5', areaUnit: 'acres', price: 500000, type: 'agricultural', highestBid: 550000, bids: 12, verified: true, image: null },
-  { id: '2', title: 'Urban Residential Plot', location: 'Andheri, Mumbai', area: '1200', areaUnit: 'sqft', price: 1200000, type: 'residential', highestBid: 1500000, bids: 8, verified: true, image: null },
-  { id: '3', title: 'Commercial Business Plot', location: 'Whitefield, Bangalore', area: '5000', areaUnit: 'sqft', price: 2000000, type: 'commercial', highestBid: 2200000, bids: 15, verified: true, image: null },
-  { id: '4', title: 'Apple Orchard Land', location: 'Shimla, Himachal Pradesh', area: '3', areaUnit: 'acres', price: 800000, type: 'agricultural', highestBid: 950000, bids: 5, verified: true, image: null },
-  { id: '5', title: 'Farmhouse Plot', location: 'Lonavala, Pune', area: '2000', areaUnit: 'sqft', price: 1800000, type: 'residential', highestBid: 1900000, bids: 10, verified: true, image: null },
-  { id: '6', title: 'Industrial Zone Land', location: 'Ahmedabad, Gujarat', area: '8000', areaUnit: 'sqft', price: 3500000, type: 'industrial', highestBid: 3200000, bids: 9, verified: true, image: null },
-]
+import IntentModal from '@/components/intent-modal'
+import SellLeadForm from '@/components/sell-lead-form'
+import { Search, MapPin, TrendingUp, Shield, FileText, Gavel, ArrowRight, ChevronRight, Loader2 } from 'lucide-react'
 
 const CATEGORIES = [
   { label: 'Agricultural', value: 'agricultural', icon: '🌾', count: 1240 },
@@ -36,6 +29,46 @@ export default function HomePage() {
   const router = useRouter()
   const { isAuthenticated } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
+  const [featuredProperties, setFeaturedProperties] = useState([])
+  const [trendingProperties, setTrendingProperties] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showIntentModal, setShowIntentModal] = useState(false)
+  const [showSellForm, setShowSellForm] = useState(false)
+
+  // Show intent modal on first visit if not authenticated and not yet seen
+  useEffect(() => {
+    if (!isAuthenticated && !localStorage.getItem('intentModalDone')) {
+      const timer = setTimeout(() => setShowIntentModal(true), 600)
+      return () => clearTimeout(timer)
+    }
+  }, [isAuthenticated])
+
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        const res = await fetch('/api/properties?status=active&limit=10')
+        const data = await res.json()
+        
+        if (data.data && data.data.length > 0) {
+          // Featured: first 4 properties
+          setFeaturedProperties(data.data.slice(0, 4))
+          // Trending: next 4 properties
+          setTrendingProperties(data.data.slice(2, 6))
+        } else {
+          setFeaturedProperties([])
+          setTrendingProperties([])
+        }
+      } catch (error) {
+        console.error('Error fetching properties:', error)
+        setFeaturedProperties([])
+        setTrendingProperties([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProperties()
+  }, [])
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -46,8 +79,24 @@ export default function HomePage() {
     }
   }
 
+  const handleIntentClose = (action) => {
+    setShowIntentModal(false)
+    if (action === 'sell') {
+      setTimeout(() => setShowSellForm(true), 100)
+    }
+  }
+
   return (
     <div className="bg-background">
+      {showIntentModal && (
+        <IntentModal onClose={handleIntentClose} />
+      )}
+      {showSellForm && (
+        <SellLeadForm
+          onClose={() => setShowSellForm(false)}
+          onSuccess={() => setShowSellForm(false)}
+        />
+      )}
       {/* Hero Section */}
       <section className="px-4 pt-6 pb-8 bg-gradient-to-b from-primary/8 to-background">
         <div className="max-w-lg mx-auto">
@@ -116,13 +165,24 @@ export default function HomePage() {
               View All <ChevronRight className="w-3 h-3" />
             </button>
           </div>
-          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4">
-            {FEATURED_PROPERTIES.slice(0, 4).map((property) => (
-              <div key={property.id} className="flex-shrink-0 w-[260px]">
-                <PropertyCard property={property} compact />
-              </div>
-            ))}
-          </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : featuredProperties.length > 0 ? (
+            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4">
+              {featuredProperties.map((property) => (
+                <div key={property._id} className="flex-shrink-0 w-[260px]">
+                  <PropertyCard property={property} compact />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No properties available yet</p>
+              <p className="text-xs mt-1">Check back soon!</p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -135,11 +195,27 @@ export default function HomePage() {
               <h2 className="font-semibold text-foreground">Trending Now</h2>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {FEATURED_PROPERTIES.slice(2, 6).map((property) => (
-              <PropertyCard key={property.id} property={property} compact />
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-2 gap-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="bg-card rounded-xl p-4 border border-border animate-pulse">
+                  <div className="h-32 bg-muted rounded-lg mb-3" />
+                  <div className="h-4 bg-muted rounded w-3/4 mb-2" />
+                  <div className="h-3 bg-muted rounded w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : trendingProperties.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3">
+              {trendingProperties.map((property) => (
+                <PropertyCard key={property._id} property={property} compact />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No trending properties</p>
+            </div>
+          )}
         </div>
       </section>
 

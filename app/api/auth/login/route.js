@@ -47,7 +47,7 @@ export async function POST(request) {
     const response = {
       token,
       user: {
-        _id: user._id,
+        _id: user._id.toString(),
         email: user.email,
         fullName: user.fullName,
         role: user.role,
