@@ -83,6 +83,8 @@ export default function HomePage() {
     setShowIntentModal(false)
     if (action === 'sell') {
       setTimeout(() => setShowSellForm(true), 100)
+    } else if (action === 'buy') {
+      setTimeout(() => router.push('/properties'), 100)
     }
   }
 
