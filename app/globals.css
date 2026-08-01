@@ -88,6 +88,20 @@
   }
 }
 
+@layer components {
+  /* Responsive content shells.
+     Mobile keeps the original narrow app feel, desktop opens up progressively. */
+  .app-shell {
+    @apply w-full mx-auto max-w-lg md:max-w-3xl lg:max-w-5xl;
+  }
+  .app-shell-wide {
+    @apply w-full mx-auto max-w-lg md:max-w-4xl lg:max-w-6xl;
+  }
+  .app-shell-narrow {
+    @apply w-full mx-auto max-w-lg md:max-w-2xl;
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

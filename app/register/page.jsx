@@ -99,12 +99,12 @@ function _LegacyRegisterPage() {
         <div className="max-w-sm mx-auto w-full">
           <div className="flex items-center justify-center mb-6">
             <div className="w-14 h-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-bold text-2xl">
-              LH
+              LB
             </div>
           </div>
 
           <h1 className="text-2xl font-bold text-foreground text-center">Create Account</h1>
-          <p className="text-sm text-muted-foreground text-center mt-2">Join LandHub to buy or sell land</p>
+          <p className="text-sm text-muted-foreground text-center mt-2">Join LandBid to buy or sell land</p>
 
           {error && (
             <Alert variant="destructive" className="mt-4">

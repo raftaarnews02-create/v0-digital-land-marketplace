@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter, usePathname } from 'next/navigation'
+import BrandLogo from '@/components/brand-logo'
 import { useAuth } from '@/lib/auth-context'
 import { Bell, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
@@ -9,17 +10,15 @@ export default function MobileHeader() {
   const pathname = usePathname()
   const { user, isAuthenticated } = useAuth()
 
-  const hiddenRoutes = ['/login', '/register']
-  if (hiddenRoutes.includes(pathname)) return null
+  // Auth screens and the admin console carry their own chrome
+  const hiddenRoutes = ['/login', '/register', '/create-account']
+  if (hiddenRoutes.includes(pathname) || pathname.startsWith('/admin')) return null
 
   return (
-    <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border">
+    <header className="md:hidden sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border">
       <div className="flex items-center justify-between px-4 h-14">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
-            LH
-          </div>
-          <span className="font-bold text-foreground">LandHub</span>
+        <Link href="/" aria-label="LandBid home">
+          <BrandLogo className="h-9" priority />
         </Link>
 
         <div className="flex items-center gap-1">

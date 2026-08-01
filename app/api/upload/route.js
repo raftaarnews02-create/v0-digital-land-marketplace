@@ -1,6 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getDatabase } from '@/lib/db';
+import { NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
+import { uploadToCloudinary, deleteFromCloudinary, getCloudinaryConfig } from '@/lib/cloudinary';
+
+const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+const DOCUMENT_TYPES = [...IMAGE_TYPES, 'application/pdf'];
 
 export async function POST(request) {
   try {
@@ -8,151 +13,84 @@ export async function POST(request) {
     const decoded = verifyToken(token);
 
     if (!decoded) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!getCloudinaryConfig()) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
+        { error: 'File uploads are not configured on this server' },
+        { status: 503 }
       );
     }
 
     const formData = await request.formData();
     const file = formData.get('file');
-    const type = formData.get('type') || 'image'; // image or document
+    const kind = formData.get('type') === 'document' ? 'document' : 'image';
 
-    if (!file) {
+    if (!file || typeof file.arrayBuffer !== 'function') {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    if (file.size > MAX_BYTES) {
       return NextResponse.json(
-        { error: 'No file provided' },
-        { status: 400 }
+        { error: `File is too large. Maximum size is ${MAX_BYTES / 1024 / 1024} MB.` },
+        { status: 413 }
       );
     }
 
-    // Convert file to base64
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const base64 = buffer.toString('base64');
-    const mimeType = file.type;
-
-    // Check if Cloudinary is configured
-    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-    const apiKey = process.env.CLOUDINARY_API_KEY;
-    const apiSecret = process.env.CLOUDINARY_API_SECRET;
-
-    if (!cloudName || !apiKey || !apiSecret) {
-      // If Cloudinary is not configured, return a placeholder URL
-      // In production, you would want to set up Cloudinary
-      console.warn('[v0] Cloudinary not configured, using placeholder');
-      
-      // For demo purposes, return a placeholder
-      return NextResponse.json({
-        url: `https://placeholder.com/${file.name}`,
-        publicId: `placeholder_${Date.now()}`,
-        message: 'Using placeholder (Cloudinary not configured)',
-      });
-    }
-
-    // Upload to Cloudinary
-    const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${type}/upload`;
-    
-    const formDataUpload = new FormData();
-    formDataUpload.append('file', `data:${mimeType};base64,${base64}`);
-    formDataUpload.append('upload_preset', process.env.CLOUDINARY_UPLOAD_PRESET || 'ml_default');
-
-    const response = await fetch(uploadUrl, {
-      method: 'POST',
-      body: formDataUpload,
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      console.error('[v0] Cloudinary upload error:', error);
+    const allowed = kind === 'document' ? DOCUMENT_TYPES : IMAGE_TYPES;
+    if (!allowed.includes(file.type)) {
       return NextResponse.json(
-        { error: 'Failed to upload file' },
-        { status: 500 }
+        {
+          error: kind === 'document'
+            ? 'Upload a PDF or an image (JPG, PNG, WEBP).'
+            : 'Upload an image (JPG, PNG, WEBP).',
+        },
+        { status: 415 }
       );
     }
 
-    const data = await response.json();
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const dataUri = `data:${file.type};base64,${buffer.toString('base64')}`;
 
-    return NextResponse.json({
-      url: data.secure_url,
-      publicId: data.public_id,
-      width: data.width,
-      height: data.height,
-      format: data.format,
+    const result = await uploadToCloudinary(dataUri, {
+      folder: kind === 'document' ? 'landbid/documents' : 'landbid/properties',
+      // `auto` lets Cloudinary store PDFs as raw and images as images
+      resourceType: kind === 'document' ? 'auto' : 'image',
     });
+
+    return NextResponse.json(result);
   } catch (error) {
-    console.error('[v0] Upload error:', error);
+    console.error('[upload] error:', error);
     return NextResponse.json(
-      { error: 'Failed to upload file' },
-      { status: 500 }
+      { error: error.message || 'Failed to upload file' },
+      { status: error.status || 500 }
     );
   }
 }
 
-// DELETE - Remove uploaded file
 export async function DELETE(request) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     const decoded = verifyToken(token);
 
     if (!decoded) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { publicId } = await request.json();
+    const { publicId, resourceType } = await request.json();
 
     if (!publicId) {
-      return NextResponse.json(
-        { error: 'Public ID required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Public ID required' }, { status: 400 });
     }
 
-    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-    const apiKey = process.env.CLOUDINARY_API_KEY;
-    const apiSecret = process.env.CLOUDINARY_API_SECRET;
-
-    if (!cloudName || !apiKey || !apiSecret) {
-      return NextResponse.json({ message: 'Cloudinary not configured' });
-    }
-
-    // Delete from Cloudinary using admin API
-    const timestamp = Math.round(new Date().getTime() / 1000);
-    const signature = require('crypto')
-      .createHash('sha1')
-      .update(`public_id=${publicId}&timestamp=${timestamp}${apiSecret}`)
-      .digest('sha1');
-
-    const deleteUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`;
-    
-    const formDataDelete = new FormData();
-    formDataDelete.append('public_id', publicId);
-    formDataDelete.append('timestamp', timestamp.toString());
-    formDataDelete.append('api_key', apiKey);
-    formDataDelete.append('signature', signature);
-
-    const response = await fetch(deleteUrl, {
-      method: 'POST',
-      body: formDataDelete,
-    });
-
-    if (!response.ok) {
-      console.error('[v0] Cloudinary delete error');
-      return NextResponse.json(
-        { error: 'Failed to delete file' },
-        { status: 500 }
-      );
-    }
-
+    await deleteFromCloudinary(publicId, resourceType || 'image');
     return NextResponse.json({ message: 'File deleted successfully' });
   } catch (error) {
-    console.error('[v0] Delete error:', error);
+    console.error('[upload] delete error:', error);
     return NextResponse.json(
-      { error: 'Failed to delete file' },
-      { status: 500 }
+      { error: error.message || 'Failed to delete file' },
+      { status: error.status || 500 }
     );
   }
 }
-

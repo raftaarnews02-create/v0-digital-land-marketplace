@@ -1,189 +1,364 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useRef, useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useAuth } from '@/lib/auth-context'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Search, Send, ChevronLeft, Phone, MoreVertical } from 'lucide-react'
+import { toast } from 'sonner'
+import {
+  Search, Send, ChevronLeft, Phone, MessageCircle, Loader2, Package, Lock,
+} from 'lucide-react'
 
-const CONVERSATIONS = [
-  {
-    id: 'c1', name: 'Rajesh Kumar', avatar: 'RK', lastMessage: 'The starting bid is ₹4,00,000. Current highest bid is ₹5,00,000.',
-    time: '11:15 AM', unread: 2, property: 'Fertile Agricultural Land',
-  },
-  {
-    id: 'c2', name: 'Priya Sharma', avatar: 'PS', lastMessage: 'Yes, the plot is still available for viewing.',
-    time: 'Yesterday', unread: 0, property: 'Urban Residential Plot',
-  },
-  {
-    id: 'c3', name: 'Nagaraj Rao', avatar: 'NR', lastMessage: 'I can arrange a site visit this weekend.',
-    time: '2 days ago', unread: 0, property: 'Commercial Business Plot',
-  },
-]
-
-const CHAT_MESSAGES = {
-  c1: [
-    { id: 'm1', sender: 'other', name: 'Rajesh Kumar', text: 'Hi, I am the owner of the agricultural land in Ludhiana.', time: '10:30 AM' },
-    { id: 'm2', sender: 'me', text: 'Hi Rajesh! I am interested in your property. Is it still available?', time: '10:32 AM' },
-    { id: 'm3', sender: 'other', name: 'Rajesh Kumar', text: 'Yes, it is available. We have received multiple bids already. Would you like to place a bid?', time: '10:45 AM' },
-    { id: 'm4', sender: 'me', text: 'What is the minimum asking price? And is irrigation available?', time: '11:00 AM' },
-    { id: 'm5', sender: 'other', name: 'Rajesh Kumar', text: 'The starting bid is ₹4,00,000. Current highest bid is ₹5,00,000. Yes, canal water supply is available for irrigation.', time: '11:15 AM' },
-  ],
+function timeLabel(date) {
+  if (!date) return ''
+  const d = new Date(date)
+  const now = new Date()
+  const sameDay = d.toDateString() === now.toDateString()
+  if (sameDay) return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+  const diffDays = Math.floor((now - d) / 86400000)
+  if (diffDays === 1) return 'Yesterday'
+  if (diffDays < 7) return `${diffDays}d ago`
+  return d.toLocaleDateString('en-IN')
 }
 
-export default function MessagesPage() {
+function MessagesContent() {
   const router = useRouter()
-  const [selectedChat, setSelectedChat] = useState(null)
+  const searchParams = useSearchParams()
+  const { isAuthenticated, loading: authLoading } = useAuth()
+
+  const [conversations, setConversations] = useState([])
+  const [loadingList, setLoadingList] = useState(true)
+  const [selectedId, setSelectedId] = useState(searchParams.get('conversation') || null)
+  const [thread, setThread] = useState(null)
+  const [loadingThread, setLoadingThread] = useState(false)
   const [newMessage, setNewMessage] = useState('')
-  const [messages, setMessages] = useState(CHAT_MESSAGES)
+  const [sending, setSending] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const scrollRef = useRef(null)
 
-  const filteredConversations = CONVERSATIONS.filter((c) =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.property.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) router.replace('/login?redirect=/messages')
+  }, [authLoading, isAuthenticated, router])
 
-  const handleSend = () => {
-    if (!newMessage.trim() || !selectedChat) return
-    const chatMessages = messages[selectedChat] || []
-    const newMsg = {
-      id: `m_${Date.now()}`,
-      sender: 'me',
-      text: newMessage,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` })
+
+  const loadConversations = useCallback(async () => {
+    try {
+      const res = await fetch('/api/messages', { headers: authHeaders() })
+      if (!res.ok) throw new Error('Could not load your chats')
+      const data = await res.json()
+      setConversations(data.data || [])
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setLoadingList(false)
     }
-    setMessages({ ...messages, [selectedChat]: [...chatMessages, newMsg] })
-    setNewMessage('')
+  }, [])
+
+  useEffect(() => {
+    if (isAuthenticated) loadConversations()
+  }, [isAuthenticated, loadConversations])
+
+  // A listing can deep-link straight into its chat
+  useEffect(() => {
+    const propertyId = searchParams.get('property')
+    if (!propertyId || !isAuthenticated) return
+
+    const open = async () => {
+      try {
+        const res = await fetch('/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ propertyId }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Could not open this chat')
+        setSelectedId(data.conversationId)
+        loadConversations()
+      } catch (err) {
+        toast.error(err.message)
+      }
+    }
+    open()
+  }, [searchParams, isAuthenticated, loadConversations])
+
+  const loadThread = useCallback(async (id) => {
+    if (!id) return
+    setLoadingThread(true)
+    try {
+      const res = await fetch(`/api/messages?conversationId=${id}`, { headers: authHeaders() })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not open this chat')
+      setThread(data)
+      setConversations((prev) => prev.map((c) => (c._id === id ? { ...c, unread: 0 } : c)))
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setLoadingThread(false)
+    }
+  }, [])
+
+  useEffect(() => { loadThread(selectedId) }, [selectedId, loadThread])
+
+  // Scroll the message list itself — scrollIntoView would drag the whole page
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [thread?.messages?.length])
+
+  const handleSend = async () => {
+    const text = newMessage.trim()
+    if (!text || !selectedId) return
+    setSending(true)
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ conversationId: selectedId, message: text }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Message not sent')
+      setNewMessage('')
+      await loadThread(selectedId)
+      loadConversations()
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setSending(false)
+    }
   }
 
-  const selectedConvo = CONVERSATIONS.find((c) => c.id === selectedChat)
-  const chatMessages = messages[selectedChat] || []
+  const filtered = conversations.filter(
+    (c) =>
+      c.withUser?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.propertyTitle?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
-  // Chat View
-  if (selectedChat) {
+  if (authLoading || !isAuthenticated) {
     return (
-      <div className="bg-background min-h-screen flex flex-col">
-        {/* Chat Header */}
-        <div className="sticky top-14 z-30 bg-card/95 backdrop-blur-md border-b border-border px-4 py-2.5">
-          <div className="max-w-lg mx-auto flex items-center gap-3">
-            <button onClick={() => setSelectedChat(null)} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted" aria-label="Back">
-              <ChevronLeft className="w-5 h-5 text-foreground" />
-            </button>
-            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <span className="text-xs font-bold text-primary">{selectedConvo?.avatar}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">{selectedConvo?.name}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{selectedConvo?.property}</p>
-            </div>
-            <button className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted" aria-label="Call">
-              <Phone className="w-4 h-4 text-foreground" />
-            </button>
-          </div>
-        </div>
-
-        {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 pb-32">
-          <div className="max-w-lg mx-auto space-y-3">
-            {chatMessages.map((msg) => (
-              <div key={msg.id} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 ${
-                  msg.sender === 'me'
-                    ? 'bg-primary text-primary-foreground rounded-br-sm'
-                    : 'bg-card border border-border text-foreground rounded-bl-sm'
-                }`}>
-                  <p className="text-sm leading-relaxed">{msg.text}</p>
-                  <p className={`text-[10px] mt-1 ${msg.sender === 'me' ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
-                    {msg.time}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Message Input */}
-        <div className="fixed bottom-16 left-0 right-0 z-30 bg-card border-t border-border px-4 py-3 safe-bottom">
-          <div className="max-w-lg mx-auto flex items-center gap-2">
-            <Input
-              placeholder="Type a message..."
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              className="flex-1 h-10 rounded-full"
-            />
-            <button
-              onClick={handleSend}
-              disabled={!newMessage.trim()}
-              className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-50"
-              aria-label="Send message"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
 
-  // Conversation List View
+  const searchField = (
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <Input
+        placeholder="Search chats..."
+        className="pl-9 h-10 rounded-xl bg-muted border-0"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+      />
+    </div>
+  )
+
+  const conversationRows = (
+    <>
+      {filtered.map((convo) => (
+        <button
+          key={convo._id}
+          className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors text-left ${
+            selectedId === convo._id ? 'bg-primary/10' : 'hover:bg-muted'
+          }`}
+          onClick={() => setSelectedId(convo._id)}
+        >
+          <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <span className="text-sm font-bold text-primary">
+              {(convo.withUser?.name || 'U').charAt(0).toUpperCase()}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-foreground truncate">{convo.withUser?.name}</p>
+              <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                {timeLabel(convo.lastMessageAt)}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground truncate">
+              {convo.lastMessage || 'No messages yet'}
+            </p>
+            <p className="text-[10px] text-primary font-medium truncate mt-0.5">{convo.propertyTitle}</p>
+          </div>
+          {convo.unread > 0 && (
+            <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+              {convo.unread}
+            </span>
+          )}
+        </button>
+      ))}
+
+      {!loadingList && filtered.length === 0 && (
+        <div className="text-center py-16 px-4">
+          <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-7 h-7 text-muted-foreground" />
+          </div>
+          <p className="text-foreground font-medium">No chats yet</p>
+          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+            Chats open up once our team approves your contact request on a listing.
+          </p>
+          <Button variant="outline" className="mt-4" onClick={() => router.push('/properties')}>
+            Browse listings
+          </Button>
+        </div>
+      )}
+    </>
+  )
+
+  const chatPanel = thread ? (
+    <div className="flex flex-col h-full">
+      {/* Chat header */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card">
+        <button
+          onClick={() => { setSelectedId(null); setThread(null) }}
+          className="md:hidden w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted"
+          aria-label="Back to chats"
+        >
+          <ChevronLeft className="w-5 h-5 text-foreground" />
+        </button>
+        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <span className="text-sm font-bold text-primary">
+            {(thread.conversation.withUser?.name || 'U').charAt(0).toUpperCase()}
+          </span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-foreground truncate">
+            {thread.conversation.withUser?.name}
+          </p>
+          <button
+            onClick={() => router.push(`/properties/${thread.conversation.propertyId}`)}
+            className="text-[11px] text-primary hover:underline flex items-center gap-1 truncate"
+          >
+            <Package className="w-3 h-3 flex-shrink-0" />
+            {thread.conversation.propertyTitle}
+          </button>
+        </div>
+        {thread.conversation.withUser?.phone && (
+          <a
+            href={`tel:+91${thread.conversation.withUser.phone}`}
+            className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0"
+            aria-label="Call"
+          >
+            <Phone className="w-4 h-4 text-accent" />
+          </a>
+        )}
+      </div>
+
+      {/* Messages */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-background">
+        {loadingThread ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        ) : thread.messages.length === 0 ? (
+          <p className="text-center text-sm text-muted-foreground py-10">
+            Say hello — this chat is now open.
+          </p>
+        ) : (
+          thread.messages.map((msg) => (
+            <div key={msg._id} className={`flex ${msg.mine ? 'justify-end' : 'justify-start'}`}>
+              <div
+                className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${
+                  msg.mine
+                    ? 'bg-primary text-primary-foreground rounded-br-md'
+                    : 'bg-card border border-border text-foreground rounded-bl-md'
+                }`}
+              >
+                <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
+                <p className={`text-[10px] mt-1 ${msg.mine ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                  {timeLabel(msg.createdAt)}
+                </p>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Composer */}
+      <div className="border-t border-border bg-card p-3 flex items-center gap-2">
+        <Input
+          placeholder="Type a message..."
+          className="h-11 rounded-xl"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+        />
+        <Button
+          onClick={handleSend}
+          disabled={sending || !newMessage.trim()}
+          className="h-11 w-11 rounded-xl p-0 flex-shrink-0"
+          aria-label="Send"
+        >
+          {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+        </Button>
+      </div>
+    </div>
+  ) : (
+    <div className="hidden md:flex flex-col items-center justify-center h-full text-center px-6">
+      <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+        <MessageCircle className="w-8 h-8 text-muted-foreground" />
+      </div>
+      <p className="font-medium text-foreground">Select a chat</p>
+      <p className="text-sm text-muted-foreground mt-1">Pick a conversation to start messaging.</p>
+    </div>
+  )
+
+  // One tree for both breakpoints — on phones the list and the chat swap
+  // places, on desktop they sit side by side
+  const showChat = !!(selectedId && thread)
+
   return (
     <div className="bg-background min-h-screen">
-      <div className="px-4 pt-4 pb-2">
-        <div className="max-w-lg mx-auto">
-          <h1 className="text-xl font-bold text-foreground">Messages</h1>
-          <div className="mt-3 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search conversations..."
-              className="pl-9 h-10 rounded-xl bg-muted border-0"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+      <div className="px-4 md:px-6 py-4 md:py-8">
+        <div className="app-shell-wide">
+          <h1 className={`text-xl md:text-2xl font-bold text-foreground mb-3 md:mb-5 ${showChat ? 'hidden md:block' : ''}`}>
+            Messages
+          </h1>
+
+          <div className="md:grid md:grid-cols-[320px_1fr] md:gap-5 md:h-[calc(100vh-16rem)] md:min-h-[480px]">
+            {/* Conversation list */}
+            <div
+              className={`rounded-2xl md:border md:border-border md:bg-card md:p-3 md:overflow-y-auto ${
+                showChat ? 'hidden md:block' : 'block'
+              }`}
+            >
+              {searchField}
+              <div className="mt-3 space-y-1 pb-24 md:pb-0">
+                {loadingList ? (
+                  <div className="flex justify-center py-10">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  </div>
+                ) : conversationRows}
+              </div>
+            </div>
+
+            {/* Chat */}
+            <div
+              className={`rounded-2xl border border-border bg-card overflow-hidden h-[calc(100vh-8rem)] md:h-auto ${
+                showChat ? 'block' : 'hidden md:block'
+              }`}
+            >
+              {chatPanel}
+            </div>
           </div>
         </div>
       </div>
-
-      <div className="px-4 py-2 pb-24">
-        <div className="max-w-lg mx-auto space-y-1">
-          {filteredConversations.map((convo) => (
-            <button
-              key={convo.id}
-              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-muted transition-colors text-left"
-              onClick={() => setSelectedChat(convo.id)}
-            >
-              <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <span className="text-sm font-bold text-primary">{convo.avatar}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-foreground">{convo.name}</p>
-                  <span className="text-[10px] text-muted-foreground">{convo.time}</span>
-                </div>
-                <p className="text-xs text-muted-foreground truncate">{convo.lastMessage}</p>
-                <p className="text-[10px] text-primary font-medium truncate mt-0.5">{convo.property}</p>
-              </div>
-              {convo.unread > 0 && (
-                <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                  {convo.unread}
-                </span>
-              )}
-            </button>
-          ))}
-
-          {filteredConversations.length === 0 && (
-            <div className="text-center py-16">
-              <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-foreground font-medium">No conversations found</p>
-              <p className="text-sm text-muted-foreground mt-1">Start by contacting a property seller</p>
-              <Button variant="outline" className="mt-4" onClick={() => router.push('/properties')}>
-                Browse Properties
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
+  )
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <MessagesContent />
+    </Suspense>
   )
 }

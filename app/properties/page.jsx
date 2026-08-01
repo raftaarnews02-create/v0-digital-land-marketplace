@@ -71,11 +71,80 @@ function PropertiesContent() {
 
   const activeFilters = (selectedType !== 'all' ? 1 : 0) + (priceMax < 10000000 ? 1 : 0)
 
+  const clearAll = () => {
+    setSelectedType('all')
+    setPriceMax(10000000)
+    setSortBy('newest')
+  }
+
+  /* Shared filter controls — rendered in the mobile drop-down panel and the desktop sidebar */
+  const filterControls = (
+    <div className="space-y-4">
+      <div>
+        <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">Property Type</p>
+        <div className="flex flex-wrap gap-2">
+          {TYPES.map((type) => (
+            <button
+              key={type.value}
+              onClick={() => setSelectedType(type.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                selectedType === type.value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-foreground hover:bg-muted/70'
+              }`}
+            >
+              {type.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">Max Price</p>
+        <input
+          type="range"
+          min={100000}
+          max={10000000}
+          step={100000}
+          value={priceMax}
+          onChange={(e) => setPriceMax(parseInt(e.target.value))}
+          className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+        />
+        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+          <span>{"₹1L"}</span>
+          <span className="font-medium text-foreground">
+            {"Up to ₹"}{priceMax >= 10000000 ? 'Any' : `${(priceMax / 100000).toFixed(0)}L`}
+          </span>
+          <span>{"₹1Cr"}</span>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">Sort By</p>
+        <div className="flex flex-wrap gap-2">
+          {SORT_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => setSortBy(option.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                sortBy === option.value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-foreground hover:bg-muted/70'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <div className="bg-background min-h-screen">
-      {/* Search Bar */}
-      <div className="sticky top-14 z-30 bg-card/95 backdrop-blur-md border-b border-border px-4 py-3">
-        <div className="max-w-lg mx-auto">
+      {/* Search Bar — hidden on desktop, the site header already carries search */}
+      <div className="md:hidden sticky top-14 z-30 bg-card/95 backdrop-blur-md border-b border-border px-4 py-3">
+        <div className="app-shell-wide">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -112,79 +181,13 @@ function PropertiesContent() {
         </div>
       </div>
 
-      {/* Filter Panel */}
+      {/* Mobile Filter Panel */}
       {showFilters && (
-        <div className="bg-card border-b border-border px-4 py-4 animate-in slide-in-from-top-2 duration-200">
-          <div className="max-w-lg mx-auto space-y-4">
-            <div>
-              <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">Property Type</p>
-              <div className="flex flex-wrap gap-2">
-                {TYPES.map((type) => (
-                  <button
-                    key={type.value}
-                    onClick={() => setSelectedType(type.value)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                      selectedType === type.value
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-foreground'
-                    }`}
-                  >
-                    {type.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">Max Price</p>
-              <input
-                type="range"
-                min={100000}
-                max={10000000}
-                step={100000}
-                value={priceMax}
-                onChange={(e) => setPriceMax(parseInt(e.target.value))}
-                className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                <span>{"₹1L"}</span>
-                <span className="font-medium text-foreground">
-                  {"Up to ₹"}{priceMax >= 10000000 ? 'Any' : `${(priceMax / 100000).toFixed(0)}L`}
-                </span>
-                <span>{"₹1Cr"}</span>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wide">Sort By</p>
-              <div className="flex flex-wrap gap-2">
-                {SORT_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setSortBy(option.value)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                      sortBy === option.value
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-foreground'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1"
-                onClick={() => {
-                  setSelectedType('all')
-                  setPriceMax(10000000)
-                  setSortBy('newest')
-                }}
-              >
+        <div className="md:hidden bg-card border-b border-border px-4 py-4 animate-in slide-in-from-top-2 duration-200">
+          <div className="app-shell-wide">
+            {filterControls}
+            <div className="flex gap-2 pt-4">
+              <Button variant="outline" size="sm" className="flex-1" onClick={clearAll}>
                 Clear All
               </Button>
               <Button size="sm" className="flex-1" onClick={() => setShowFilters(false)}>
@@ -195,55 +198,96 @@ function PropertiesContent() {
         </div>
       )}
 
-      {/* Results */}
-      <div className="px-4 py-4">
-        <div className="max-w-lg mx-auto">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-muted-foreground">
-              {filteredProperties.length} properties found
-            </p>
-            <div className="flex gap-1">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'}`}
-                aria-label="Grid view"
-              >
-                <Grid className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'}`}
-                aria-label="List view"
-              >
-                <List className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+      <div className="px-4 md:px-6 py-4 md:py-8">
+        <div className="app-shell-wide md:flex md:gap-8 md:items-start">
 
-          {filteredProperties.length > 0 ? (
-            <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-3' : 'space-y-3'}>
-              {filteredProperties.map((property) => (
-                <PropertyCard key={property.id} property={property} compact={viewMode === 'grid'} />
-              ))}
+          {/* Desktop Filter Sidebar */}
+          <aside className="hidden md:block w-64 flex-shrink-0 sticky top-[88px]">
+            <div className="bg-card rounded-2xl border border-border p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-primary" />
+                  <p className="font-semibold text-foreground">Filters</p>
+                </div>
+                {activeFilters > 0 && (
+                  <button onClick={clearAll} className="text-xs text-primary font-medium hover:underline">
+                    Clear
+                  </button>
+                )}
+              </div>
+              {filterControls}
             </div>
-          ) : (
-            <div className="text-center py-16">
-              <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-foreground font-medium">No properties found</p>
-              <p className="text-sm text-muted-foreground mt-1">Try adjusting your filters</p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => {
-                  setSearchQuery('')
-                  setSelectedType('all')
-                  setPriceMax(10000000)
-                }}
-              >
-                Clear All Filters
-              </Button>
+          </aside>
+
+          {/* Results */}
+          <div className="flex-1 min-w-0">
+            {/* Desktop search field */}
+            <div className="hidden md:block relative mb-5">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by title or location..."
+                className="pl-11 h-12 rounded-xl bg-card border-border"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2" aria-label="Clear search">
+                  <X className="w-4 h-4 text-muted-foreground" />
+                </button>
+              )}
             </div>
-          )}
+
+            <div className="flex items-center justify-between mb-3 md:mb-5">
+              <p className="text-xs md:text-sm text-muted-foreground">
+                {filteredProperties.length} properties found
+              </p>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'}`}
+                  aria-label="Grid view"
+                >
+                  <Grid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'}`}
+                  aria-label="List view"
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {filteredProperties.length > 0 ? (
+              <div className={
+                viewMode === 'grid'
+                  ? 'grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-5'
+                  : 'space-y-3 md:space-y-0 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-5'
+              }>
+                {filteredProperties.map((property) => (
+                  <PropertyCard key={property.id} property={property} compact={viewMode === 'grid'} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16">
+                <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-foreground font-medium">No properties found</p>
+                <p className="text-sm text-muted-foreground mt-1">Try adjusting your filters</p>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => {
+                    setSearchQuery('')
+                    setSelectedType('all')
+                    setPriceMax(10000000)
+                  }}
+                >
+                  Clear All Filters
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

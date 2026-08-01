@@ -55,7 +55,13 @@ export default function SellLeadForm({ onClose, onSuccess }) {
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ city: city.trim(), locality: locality.trim(), mobile: mobile.trim(), intent: 'seller' }),
+        body: JSON.stringify({
+          city: city.trim(),
+          locality: locality.trim(),
+          mobile: mobile.trim(),
+          intent: 'seller',
+          source: 'sell-form',
+        }),
       })
       if (res.ok) {
         setDone(true)

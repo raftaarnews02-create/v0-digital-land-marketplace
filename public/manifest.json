@@ -1,0 +1,14 @@
+{
+  "name": "LandBid — Digital Land Marketplace",
+  "short_name": "LandBid",
+  "description": "Buy, sell and bid on verified land across India.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0b5cab",
+  "icons": [
+    { "src": "/icon.png", "sizes": "64x64", "type": "image/png" },
+    { "src": "/apple-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/landbid-mark.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

@@ -142,16 +142,16 @@ export default function DashboardPage() {
   return (
     <div className="bg-background min-h-screen">
       {/* Welcome Section */}
-      <div className="px-4 pt-6 pb-4">
-        <div className="max-w-lg mx-auto">
+      <div className="px-4 md:px-6 pt-6 md:pt-10 pb-4">
+        <div className="app-shell">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <span className="text-lg font-bold text-primary">
+            <div className="w-11 h-11 md:w-14 md:h-14 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <span className="text-lg md:text-xl font-bold text-primary">
                 {(user.fullName || user.name || 'U').charAt(0).toUpperCase()}
               </span>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">
+              <h1 className="text-xl md:text-3xl font-bold text-foreground">
                 Hello, {(user.fullName || user.name || 'User').split(' ')[0]}!
               </h1>
               <div className="flex items-center gap-1.5">
@@ -167,27 +167,27 @@ export default function DashboardPage() {
 
           {/* Role-based action banner */}
           {isSeller ? (
-            <div className="mt-4 bg-gradient-to-r from-accent/20 to-primary/10 rounded-xl p-3.5 flex items-center justify-between border border-accent/20">
+            <div className="mt-4 md:mt-6 bg-gradient-to-r from-accent/20 to-primary/10 rounded-xl p-3.5 md:p-5 flex items-center justify-between border border-accent/20">
               <div>
-                <p className="text-sm font-semibold text-foreground">Ready to list land?</p>
-                <p className="text-xs text-muted-foreground">Add a new property to start getting bids</p>
+                <p className="text-sm md:text-base font-semibold text-foreground">Ready to list land?</p>
+                <p className="text-xs md:text-sm text-muted-foreground">Add a new property to start getting bids</p>
               </div>
               <button
                 onClick={() => router.push('/sell')}
-                className="flex-shrink-0 bg-primary text-primary-foreground text-xs font-bold px-3.5 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+                className="flex-shrink-0 bg-primary text-primary-foreground text-xs md:text-sm font-bold px-3.5 md:px-5 py-2 md:py-2.5 rounded-lg hover:bg-primary/90 transition-colors"
               >
                 + List Now
               </button>
             </div>
           ) : (
-            <div className="mt-4 bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl p-3.5 flex items-center justify-between border border-primary/20">
+            <div className="mt-4 md:mt-6 bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl p-3.5 md:p-5 flex items-center justify-between border border-primary/20">
               <div>
-                <p className="text-sm font-semibold text-foreground">Explore verified land</p>
-                <p className="text-xs text-muted-foreground">Browse new listings and place bids</p>
+                <p className="text-sm md:text-base font-semibold text-foreground">Explore verified land</p>
+                <p className="text-xs md:text-sm text-muted-foreground">Browse new listings and place bids</p>
               </div>
               <button
                 onClick={() => router.push('/properties')}
-                className="flex-shrink-0 bg-primary text-primary-foreground text-xs font-bold px-3.5 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+                className="flex-shrink-0 bg-primary text-primary-foreground text-xs md:text-sm font-bold px-3.5 md:px-5 py-2 md:py-2.5 rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Browse
               </button>
@@ -197,10 +197,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="px-4 pb-4">
-        <div className="max-w-lg mx-auto grid grid-cols-3 gap-3">
+      <div className="px-4 md:px-6 pb-4 md:pb-6">
+        <div className="app-shell grid grid-cols-3 gap-3 md:gap-5">
           <Card className="cursor-pointer" onClick={() => setActiveTab('bids')}>
-            <CardContent className="pt-3 pb-3 px-3 text-center">
+            <CardContent className="pt-3 pb-3 px-3 md:pt-6 md:pb-6 text-center">
               <Gavel className="w-5 h-5 text-primary mx-auto" />
               <p className="text-lg font-bold text-foreground mt-1">
                 {loading ? '-' : bids.filter(b => b.status === 'pending').length}
@@ -209,7 +209,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
           <Card className="cursor-pointer" onClick={() => setActiveTab('saved')}>
-            <CardContent className="pt-3 pb-3 px-3 text-center">
+            <CardContent className="pt-3 pb-3 px-3 md:pt-6 md:pb-6 text-center">
               <Heart className="w-5 h-5 text-destructive mx-auto" />
               <p className="text-lg font-bold text-foreground mt-1">
                 {loading ? '-' : saved.length}
@@ -219,7 +219,7 @@ export default function DashboardPage() {
           </Card>
           {isSeller ? (
             <Card className="cursor-pointer" onClick={() => setActiveTab('listings')}>
-              <CardContent className="pt-3 pb-3 px-3 text-center">
+              <CardContent className="pt-3 pb-3 px-3 md:pt-6 md:pb-6 text-center">
                 <Package className="w-5 h-5 text-accent mx-auto" />
                 <p className="text-lg font-bold text-foreground mt-1">
                   {loading ? '-' : listings.length}
@@ -229,7 +229,7 @@ export default function DashboardPage() {
             </Card>
           ) : (
             <Card className="cursor-pointer" onClick={() => router.push('/notifications')}>
-              <CardContent className="pt-3 pb-3 px-3 text-center">
+              <CardContent className="pt-3 pb-3 px-3 md:pt-6 md:pb-6 text-center">
                 <Bell className="w-5 h-5 text-accent mx-auto" />
                 <p className="text-lg font-bold text-foreground mt-1">
                   {loading ? '-' : notifications.length}
@@ -242,9 +242,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Tabs */}
-      <div className="px-4">
-        <div className="max-w-lg mx-auto">
-          <div className="flex bg-muted rounded-xl p-1 gap-1">
+      <div className="px-4 md:px-6">
+        <div className="app-shell">
+          <div className="flex bg-muted rounded-xl p-1 gap-1 md:max-w-md">
             {[
               { key: 'bids', label: 'My Bids' },
               { key: 'saved', label: 'Saved' },
@@ -265,8 +265,8 @@ export default function DashboardPage() {
       </div>
 
       {/* Tab Content */}
-      <div className="px-4 py-4 pb-24">
-        <div className="max-w-lg mx-auto space-y-3">
+      <div className="px-4 md:px-6 py-4 md:py-6 pb-24 md:pb-10">
+        <div className="app-shell space-y-3">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />

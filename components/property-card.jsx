@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
-import { MapPin, TrendingUp, Heart, Gavel } from 'lucide-react'
+import { MapPin, TrendingUp, Heart, Gavel, BadgeCheck } from 'lucide-react'
 import { useState } from 'react'
 
 const CATEGORY_ICONS = {
@@ -27,7 +27,8 @@ export default function PropertyCard({ property, compact = false }) {
 
   const propertyId = property._id || property.id
   const imageUrl = !imgError && property.images?.[0]
-  const categoryIcon = CATEGORY_ICONS[property.category || property.type] || '🏡'
+  const category = property.category || property.type || 'agricultural'
+  const categoryIcon = CATEGORY_ICONS[category] || '🏡'
   const isClosed = property.status === 'closed'
   const bidCount = property.totalBids || property.bids || 0
   const displayPrice = property.highestBid || property.basePrice || property.price
@@ -39,28 +40,27 @@ export default function PropertyCard({ property, compact = false }) {
       role="article"
     >
       {/* Image */}
-      <div className={`relative ${compact ? 'h-36' : 'h-48'} bg-gradient-to-br from-primary/15 to-accent/15`}>
+      <div className={`relative ${compact ? 'h-36 md:h-44' : 'h-48 md:h-56'} bg-gradient-to-br from-primary/10 to-accent/10`}>
         {imageUrl ? (
           <>
             {!imgLoaded && (
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10 animate-pulse flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center animate-pulse">
                 <span className="text-4xl opacity-30">{categoryIcon}</span>
               </div>
             )}
             <img
               src={imageUrl}
               alt={property.title}
+              loading="lazy"
               className={`w-full h-full object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
               onLoad={() => setImgLoaded(true)}
               onError={() => setImgError(true)}
             />
           </>
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1.5">
             <span className="text-4xl">{categoryIcon}</span>
-            {property.images?.length === 0 && (
-              <span className="text-[10px] text-muted-foreground">No photos yet</span>
-            )}
+            <span className="text-[10px] text-muted-foreground">No photos yet</span>
           </div>
         )}
 
@@ -87,25 +87,23 @@ export default function PropertyCard({ property, compact = false }) {
           </Badge>
         )}
         {!isClosed && (property.status === 'active' || property.verified) && (
-          <Badge className="absolute top-2 left-2 bg-primary/90 text-primary-foreground text-[10px] px-2 py-0.5">
-            Verified
+          <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground text-[10px] px-2 py-0.5 gap-1 shadow-sm">
+            <BadgeCheck className="w-3 h-3" /> Verified
           </Badge>
         )}
 
         {/* Category */}
-        {(property.category || property.type) && (
-          <Badge variant="secondary" className="absolute bottom-2 left-2 text-[10px] px-2 py-0.5 bg-card/80 backdrop-blur-sm text-foreground">
-            {(property.category || property.type)?.charAt(0).toUpperCase() + (property.category || property.type)?.slice(1)}
-          </Badge>
-        )}
+        <Badge variant="secondary" className="absolute bottom-2 left-2 text-[10px] px-2 py-0.5 bg-card/85 backdrop-blur-sm text-foreground capitalize">
+          {category}
+        </Badge>
       </div>
 
       {/* Info */}
-      <div className="p-3">
-        <h3 className="font-semibold text-sm text-foreground line-clamp-1 leading-snug">{property.title}</h3>
+      <div className="p-3 md:p-4">
+        <h3 className="font-semibold text-sm md:text-base text-foreground line-clamp-1 leading-snug">{property.title}</h3>
         <div className="flex items-center gap-1 mt-1 text-muted-foreground">
-          <MapPin className="w-3 h-3 flex-shrink-0" />
-          <span className="text-xs line-clamp-1">
+          <MapPin className="w-3 h-3 md:w-3.5 md:h-3.5 flex-shrink-0" />
+          <span className="text-xs md:text-sm line-clamp-1">
             {property.location?.address
               ? `${property.location.address}, ${property.location.city}`
               : property.location?.city
@@ -114,25 +112,22 @@ export default function PropertyCard({ property, compact = false }) {
           </span>
         </div>
 
-        <div className="flex items-center justify-between mt-3 pt-2 border-t border-border">
+        <div className="flex items-end justify-between mt-3 pt-2.5 border-t border-border">
           <div>
-            <div className="flex items-center gap-1">
-              {bidCount > 0 ? (
-                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                  <Gavel className="w-2.5 h-2.5" /> {bidCount} bid{bidCount !== 1 ? 's' : ''}
-                </span>
-              ) : (
-                <span className="text-[10px] text-muted-foreground">No bids yet</span>
-              )}
-            </div>
-            <p className="font-bold text-primary text-sm">
+            {bidCount > 0 ? (
+              <span className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-0.5">
+                <Gavel className="w-2.5 h-2.5" /> {bidCount} bid{bidCount !== 1 ? 's' : ''}
+              </span>
+            ) : (
+              <span className="text-[10px] md:text-xs text-muted-foreground">No bids yet</span>
+            )}
+            <p className="font-bold text-primary text-sm md:text-lg leading-tight">
               ₹{formatPrice(displayPrice)}
             </p>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-muted-foreground">{property.area} {property.areaUnit || ''}</p>
-            {bidCount > 0 && <TrendingUp className="w-3.5 h-3.5 text-accent ml-auto mt-0.5" />}
-          </div>
+          <p className="text-xs md:text-sm text-muted-foreground">
+            {property.area} {property.areaUnit || ''}
+          </p>
         </div>
       </div>
     </div>

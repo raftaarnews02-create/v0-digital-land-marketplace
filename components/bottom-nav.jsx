@@ -15,11 +15,11 @@ const navItems = [
 export default function BottomNav() {
   const pathname = usePathname()
 
-  const hiddenRoutes = ['/login', '/register']
-  if (hiddenRoutes.includes(pathname)) return null
+  const hiddenRoutes = ['/login', '/register', '/create-account']
+  if (hiddenRoutes.includes(pathname) || pathname.startsWith('/admin')) return null
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border safe-bottom" role="navigation" aria-label="Main navigation">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border safe-bottom" role="navigation" aria-label="Main navigation">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { getDatabase } from '@/lib/db';
 import { verifyToken } from '@/lib/auth';
+import { getContactAccess, maskContact, fullContact } from '@/lib/contact-access';
 
 // GET single property by ID
 export async function GET(request, { params }) {
@@ -53,9 +54,14 @@ export async function GET(request, { params }) {
           buyerId: bid.buyerId.toString(),
           buyerName: buyer?.fullName || 'Anonymous',
         };
-        if (isSeller || isAdmin) {
+        // Sellers see a bidder's contact only once they have picked that bid;
+        // admins always see it so they can moderate
+        if (isAdmin || (isSeller && bid.status === 'accepted')) {
           base.buyerPhone = buyer?.phone || null;
           base.buyerEmail = buyer?.email || null;
+          base.contactUnlocked = true;
+        } else {
+          base.contactUnlocked = false;
         }
         return base;
       })
@@ -64,15 +70,26 @@ export async function GET(request, { params }) {
     // Calculate highest bid
     const highestBid = bids.length > 0 ? bids[0].amount : property.basePrice;
 
+    // Seller contact stays hidden until an admin approves the buyer's request
+    // (or the seller picks their bid)
+    const access = await getContactAccess(db, {
+      propertyId: property._id,
+      viewerId: decoded?.userId,
+      isSeller,
+      isAdmin,
+    });
+
     return NextResponse.json({
       property: {
         ...property,
         sellerId: property.sellerId.toString(),
-        seller: seller ? {
-          name: seller.fullName,
-          phone: seller.phone,
-          verified: seller.kycVerified,
-        } : null,
+        seller: access.unlocked ? fullContact(seller) : maskContact(seller),
+      },
+      contactAccess: {
+        unlocked: access.unlocked,
+        reason: access.reason,
+        requestStatus: access.request?.status || null,
+        adminNote: access.request?.adminNote || '',
       },
       bids: bidsWithBuyers,
       highestBid,
@@ -136,12 +153,14 @@ export async function PATCH(request, { params }) {
       if (!bid) return NextResponse.json({ error: 'Bid not found' }, { status: 404 });
 
       const buyer = await db.collection('users').findOne({ _id: bid.buyerId }, { projection: { password: 0 } });
+
+      // Contact opens up once this bid has been selected as the winner
+      const unlocked = isAdmin || bid.status === 'accepted';
       return NextResponse.json({
-        buyer: {
-          name: buyer?.fullName || 'Anonymous',
-          phone: buyer?.phone || null,
-          email: buyer?.email || null,
-        },
+        buyer: unlocked
+          ? { name: buyer?.fullName || 'Anonymous', phone: buyer?.phone || null, email: buyer?.email || null, locked: false }
+          : { ...maskContact(buyer), phone: null, email: null },
+        contactUnlocked: unlocked,
         bid: { amount: bid.amount, message: bid.message, status: bid.status },
       });
     }

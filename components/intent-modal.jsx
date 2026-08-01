@@ -131,7 +131,13 @@ export default function IntentModal({ onClose }) {
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ city: city.trim(), locality: locality.trim(), mobile: mobile.trim(), intent }),
+        body: JSON.stringify({
+          city: city.trim(),
+          locality: locality.trim(),
+          mobile: mobile.trim(),
+          intent,
+          source: 'welcome-popup',
+        }),
       })
       if (!res.ok) {
         const data = await res.json()

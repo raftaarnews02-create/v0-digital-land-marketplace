@@ -94,7 +94,10 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { title, description, location, area, areaUnit, basePrice, category, images } = body;
+    const {
+      title, description, location, area, areaUnit, basePrice, category,
+      images, documents, khasraNo, khataNo,
+    } = body;
 
     if (!title || !description || !location || !area || !basePrice || !category) {
       return NextResponse.json(
@@ -103,17 +106,44 @@ export async function POST(request) {
       );
     }
 
+    // Keep only the fields we control, and normalise the map pin
+    const lat = Number(location?.lat);
+    const lng = Number(location?.lng);
+    const hasPin =
+      Number.isFinite(lat) && Number.isFinite(lng) &&
+      lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+
     const db = await getDatabase();
     const newProperty = {
       sellerId: new ObjectId(decoded.userId),
       title,
       description,
-      location,
+      location: {
+        address: location?.address || '',
+        city: location?.city || '',
+        state: location?.state || '',
+        pincode: location?.pincode || '',
+        ...(hasPin ? { lat, lng, resolvedAddress: location?.resolvedAddress || '' } : {}),
+      },
       area,
       areaUnit: areaUnit || 'sqm',
       basePrice,
-      images: images || [],
-      documents: [],
+      khasraNo: khasraNo || '',
+      khataNo: khataNo || '',
+      images: Array.isArray(images) ? images : [],
+      documents: Array.isArray(documents)
+        ? documents
+            .filter((doc) => doc?.url)
+            .map((doc) => ({
+              type: doc.type || 'other',
+              label: doc.label || 'Document',
+              url: doc.url,
+              publicId: doc.publicId || '',
+              format: doc.format || '',
+              fileName: doc.fileName || '',
+              uploadedAt: doc.uploadedAt || new Date().toISOString(),
+            }))
+        : [],
       status: 'pending', // Set to pending for admin verification
       category,
       rejectionReason: null,

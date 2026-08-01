@@ -1,139 +1,242 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { ObjectId } from 'mongodb';
+import { getDatabase } from '@/lib/db';
+import { getAuth } from '@/lib/auth';
+import { getContactAccess } from '@/lib/contact-access';
 
-export async function POST(request) {
+/**
+ * Chat between a buyer and a seller about one listing. A conversation can only
+ * be opened once the buyer's contact request has been approved (or their bid
+ * was selected) — the same gate that reveals phone numbers.
+ */
+
+async function findOrCreateConversation(db, { property, buyerId, sellerId }) {
+  const existing = await db.collection('conversations').findOne({
+    propertyId: property._id,
+    buyerId,
+    sellerId,
+  });
+  if (existing) return existing;
+
+  const now = new Date();
+  const doc = {
+    propertyId: property._id,
+    propertyTitle: property.title,
+    buyerId,
+    sellerId,
+    participants: [buyerId, sellerId],
+    lastMessage: '',
+    lastMessageAt: now,
+    unread: {},
+    createdAt: now,
+  };
+  const result = await db.collection('conversations').insertOne(doc);
+  return { ...doc, _id: result.insertedId };
+}
+
+// GET — conversation list, or the messages inside one conversation
+export async function GET(request) {
+  const decoded = getAuth(request);
+  if (!decoded) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
+    const db = await getDatabase();
+    const params = request.nextUrl.searchParams;
+    const viewerId = new ObjectId(decoded.userId);
+    const conversationId = params.get('conversationId');
 
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
-    }
+    // ── Messages inside one conversation ──────────────────────────────────
+    if (conversationId) {
+      if (!ObjectId.isValid(conversationId)) {
+        return NextResponse.json({ error: 'Invalid conversation' }, { status: 400 });
+      }
+      const conversation = await db.collection('conversations').findOne({
+        _id: new ObjectId(conversationId),
+        participants: viewerId,
+      });
+      if (!conversation) {
+        return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+      }
 
-    const { recipientId, propertyId, message } = await request.json();
+      const messages = await db
+        .collection('messages')
+        .find({ conversationId: conversation._id })
+        .sort({ createdAt: 1 })
+        .limit(500)
+        .toArray();
 
-    if (!recipientId || !message) {
-      return NextResponse.json(
-        { message: 'Missing required fields' },
-        { status: 400 }
+      // Everything the viewer just opened counts as read
+      await db.collection('conversations').updateOne(
+        { _id: conversation._id },
+        { $set: { [`unread.${decoded.userId}`]: 0 } }
       );
-    }
 
-    if (message.trim().length === 0) {
-      return NextResponse.json(
-        { message: 'Message cannot be empty' },
-        { status: 400 }
+      const otherId = conversation.buyerId.toString() === decoded.userId
+        ? conversation.sellerId
+        : conversation.buyerId;
+      const other = await db.collection('users').findOne(
+        { _id: otherId },
+        { projection: { password: 0 } }
       );
-    }
 
-    // TODO: Save message to MongoDB
-    // const newMessage = await db.collection('messages').insertOne({
-    //   senderId: decoded.id,
-    //   recipientId,
-    //   propertyId,
-    //   message,
-    //   read: false,
-    //   createdAt: new Date(),
-    // })
-
-    return NextResponse.json(
-      {
-        message: 'Message sent successfully',
-        data: {
-          id: 'msg_' + Date.now(),
-          senderId: decoded.id,
-          recipientId,
-          message,
-          read: false,
-          createdAt: new Date().toISOString(),
+      return NextResponse.json({
+        conversation: {
+          _id: conversation._id,
+          propertyId: conversation.propertyId,
+          propertyTitle: conversation.propertyTitle,
+          withUser: {
+            _id: otherId.toString(),
+            name: other?.fullName || 'User',
+            phone: other?.phone || null,
+          },
         },
-      },
-      { status: 201 }
+        messages: messages.map((m) => ({
+          _id: m._id,
+          text: m.text,
+          createdAt: m.createdAt,
+          mine: m.senderId.toString() === decoded.userId,
+        })),
+      });
+    }
+
+    // ── Conversation list ─────────────────────────────────────────────────
+    const conversations = await db
+      .collection('conversations')
+      .find({ participants: viewerId })
+      .sort({ lastMessageAt: -1 })
+      .limit(100)
+      .toArray();
+
+    const otherIds = conversations.map((c) =>
+      c.buyerId.toString() === decoded.userId ? c.sellerId : c.buyerId
     );
+    const others = otherIds.length
+      ? await db.collection('users')
+          .find({ _id: { $in: otherIds } }, { projection: { password: 0 } })
+          .toArray()
+      : [];
+    const byId = Object.fromEntries(others.map((u) => [u._id.toString(), u]));
+
+    return NextResponse.json({
+      data: conversations.map((c) => {
+        const otherId = (c.buyerId.toString() === decoded.userId ? c.sellerId : c.buyerId).toString();
+        const other = byId[otherId];
+        return {
+          _id: c._id,
+          propertyId: c.propertyId,
+          propertyTitle: c.propertyTitle,
+          lastMessage: c.lastMessage,
+          lastMessageAt: c.lastMessageAt,
+          unread: c.unread?.[decoded.userId] || 0,
+          withUser: {
+            _id: otherId,
+            name: other?.fullName || 'User',
+            phone: other?.phone || null,
+          },
+        };
+      }),
+    });
   } catch (error) {
-    console.error('Send message error:', error);
-    return NextResponse.json(
-      { message: 'Failed to send message' },
-      { status: 500 }
-    );
+    console.error('[messages] list error:', error);
+    return NextResponse.json({ error: 'Failed to load messages' }, { status: 500 });
   }
 }
 
-export async function GET(request) {
+// POST — open a conversation for a listing, and/or send a message
+export async function POST(request) {
+  const decoded = getAuth(request);
+  if (!decoded) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    const { propertyId, conversationId, message } = await request.json();
+    const db = await getDatabase();
+    const viewerId = new ObjectId(decoded.userId);
+
+    let conversation;
+
+    if (conversationId) {
+      if (!ObjectId.isValid(conversationId)) {
+        return NextResponse.json({ error: 'Invalid conversation' }, { status: 400 });
+      }
+      conversation = await db.collection('conversations').findOne({
+        _id: new ObjectId(conversationId),
+        participants: viewerId,
+      });
+      if (!conversation) {
+        return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+      }
+    } else {
+      // Opening a chat from a listing — this is where the gate applies
+      if (!propertyId || !ObjectId.isValid(propertyId)) {
+        return NextResponse.json({ error: 'A valid property is required' }, { status: 400 });
+      }
+
+      const propertyObjectId = new ObjectId(propertyId);
+      const property = await db.collection('properties').findOne({ _id: propertyObjectId });
+      if (!property) {
+        return NextResponse.json({ error: 'Property not found' }, { status: 404 });
+      }
+
+      if (property.sellerId.toString() === decoded.userId) {
+        return NextResponse.json(
+          { error: 'Open the chat from your buyer list instead' },
+          { status: 400 }
+        );
+      }
+
+      const access = await getContactAccess(db, {
+        propertyId: propertyObjectId,
+        viewerId: decoded.userId,
+        isSeller: false,
+        isAdmin: decoded.role === 'admin',
+      });
+
+      if (!access.unlocked) {
+        return NextResponse.json(
+          {
+            error: 'Chat unlocks once our team approves your contact request',
+            requestStatus: access.request?.status || null,
+          },
+          { status: 403 }
+        );
+      }
+
+      conversation = await findOrCreateConversation(db, {
+        property,
+        buyerId: viewerId,
+        sellerId: property.sellerId,
+      });
     }
 
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
+    // Opening the chat without text is fine — the UI does this on "Message"
+    const text = String(message || '').trim();
+    if (!text) {
+      return NextResponse.json({ conversationId: conversation._id, sent: false });
     }
 
-    const conversationId = request.nextUrl.searchParams.get('conversationId');
+    const now = new Date();
+    const recipientId = conversation.participants.find((p) => p.toString() !== decoded.userId);
 
-    if (!conversationId) {
-      return NextResponse.json(
-        { message: 'Conversation ID is required' },
-        { status: 400 }
-      );
-    }
+    await db.collection('messages').insertOne({
+      conversationId: conversation._id,
+      propertyId: conversation.propertyId,
+      senderId: viewerId,
+      recipientId,
+      text: text.slice(0, 2000),
+      createdAt: now,
+    });
 
-    // TODO: Fetch messages from MongoDB
-    // const messages = await db.collection('messages')
-    //   .find({
-    //     $or: [
-    //       { conversationId, $or: [{ senderId: decoded.id }, { recipientId: decoded.id }] }
-    //     ]
-    //   })
-    //   .sort({ createdAt: 1 })
-    //   .toArray()
-
-    const messages = [
+    await db.collection('conversations').updateOne(
+      { _id: conversation._id },
       {
-        id: 'msg_1',
-        senderId: 'user_1',
-        senderName: 'Ananya Singh',
-        message: 'Hi, I am interested in your agricultural land. Is it still available?',
-        read: true,
-        createdAt: '2024-02-12T10:30:00',
-      },
-      {
-        id: 'msg_2',
-        senderId: 'seller',
-        senderName: 'Rajesh Kumar',
-        message: 'Yes, it is available. We have received one bid already. Would you like to place a bid?',
-        read: true,
-        createdAt: '2024-02-12T10:45:00',
-      },
-      {
-        id: 'msg_3',
-        senderId: 'user_1',
-        senderName: 'Ananya Singh',
-        message: 'What is the minimum asking price?',
-        read: true,
-        createdAt: '2024-02-12T11:00:00',
-      },
-      {
-        id: 'msg_4',
-        senderId: 'seller',
-        senderName: 'Rajesh Kumar',
-        message: 'The starting bid is ₹400,000. Current highest bid is ₹500,000.',
-        read: false,
-        createdAt: '2024-02-12T11:15:00',
-      },
-    ];
-
-    return NextResponse.json({ messages }, { status: 200 });
-  } catch (error) {
-    console.error('Fetch messages error:', error);
-    return NextResponse.json(
-      { message: 'Failed to fetch messages' },
-      { status: 500 }
+        $set: { lastMessage: text.slice(0, 140), lastMessageAt: now },
+        $inc: { [`unread.${recipientId.toString()}`]: 1 },
+      }
     );
+
+    return NextResponse.json({ conversationId: conversation._id, sent: true }, { status: 201 });
+  } catch (error) {
+    console.error('[messages] send error:', error);
+    return NextResponse.json({ error: 'Failed to send message' }, { status: 500 });
   }
 }

@@ -39,7 +39,7 @@ const MENU_SECTIONS = [
     items: [
       { label: 'Help Center', icon: HelpCircle, action: 'help', color: 'text-foreground' },
       { label: 'Terms & Conditions', icon: FileText, action: 'terms', color: 'text-foreground' },
-      { label: 'About LandHub', icon: Info, action: 'about', color: 'text-foreground' },
+      { label: 'About LandBid', icon: Info, action: 'about', color: 'text-foreground' },
       { label: 'Rate Us', icon: Star, action: 'rate', color: 'text-accent' },
     ],
   },
@@ -71,12 +71,12 @@ export default function ProfilePage() {
   if (!isAuthenticated) {
     return (
       <div className="bg-background min-h-screen">
-        <div className="px-4 pt-8 pb-24">
-          <div className="max-w-lg mx-auto text-center">
+        <div className="px-4 md:px-6 pt-8 md:pt-16 pb-24 md:pb-16">
+          <div className="app-shell-narrow text-center">
             <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
               <User className="w-10 h-10 text-muted-foreground" />
             </div>
-            <h1 className="text-xl font-bold text-foreground">Welcome to LandHub</h1>
+            <h1 className="text-xl font-bold text-foreground">Welcome to LandBid</h1>
             <p className="text-sm text-muted-foreground mt-2">
               Sign in to manage your properties, bids, and messages.
             </p>
@@ -110,12 +110,12 @@ export default function ProfilePage() {
   return (
     <div className="bg-background min-h-screen">
       {/* Profile Header */}
-      <div className="px-4 pt-6 pb-4">
-        <div className="max-w-lg mx-auto">
-          <div className="flex items-center gap-4">
+      <div className="px-4 md:px-6 pt-6 md:pt-10 pb-4">
+        <div className="app-shell">
+          <div className="flex items-center gap-4 md:gap-6">
             <div className="relative">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-2xl font-bold text-primary">
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-2xl md:text-3xl font-bold text-primary">
                   {(user.fullName || user.name || 'U').charAt(0).toUpperCase()}
                 </span>
               </div>
@@ -125,7 +125,7 @@ export default function ProfilePage() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-foreground truncate">{user.fullName || user.name || 'User'}</h1>
+                <h1 className="text-lg md:text-2xl font-bold text-foreground truncate">{user.fullName || user.name || 'User'}</h1>
                 <Badge className="bg-primary/10 text-primary text-[10px] px-1.5">
                   {user.role || 'buyer'}
                 </Badge>
@@ -178,26 +178,26 @@ export default function ProfilePage() {
           )}
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-3 gap-3 mt-4">
-            <div className="bg-card rounded-xl p-3 text-center border border-border cursor-pointer" onClick={() => router.push('/dashboard')}>
-              <p className="text-lg font-bold text-foreground">3</p>
-              <p className="text-[10px] text-muted-foreground">Active Bids</p>
+          <div className="grid grid-cols-3 gap-3 md:gap-5 mt-4 md:mt-6">
+            <div className="bg-card rounded-xl p-3 md:p-5 text-center border border-border cursor-pointer" onClick={() => router.push('/dashboard')}>
+              <p className="text-lg md:text-2xl font-bold text-foreground">3</p>
+              <p className="text-[10px] md:text-sm text-muted-foreground">Active Bids</p>
             </div>
-            <div className="bg-card rounded-xl p-3 text-center border border-border cursor-pointer" onClick={() => router.push('/dashboard')}>
-              <p className="text-lg font-bold text-foreground">2</p>
-              <p className="text-[10px] text-muted-foreground">Saved</p>
+            <div className="bg-card rounded-xl p-3 md:p-5 text-center border border-border cursor-pointer" onClick={() => router.push('/dashboard')}>
+              <p className="text-lg md:text-2xl font-bold text-foreground">2</p>
+              <p className="text-[10px] md:text-sm text-muted-foreground">Saved</p>
             </div>
-            <div className="bg-card rounded-xl p-3 text-center border border-border cursor-pointer" onClick={() => router.push('/messages')}>
-              <p className="text-lg font-bold text-foreground">5</p>
-              <p className="text-[10px] text-muted-foreground">Messages</p>
+            <div className="bg-card rounded-xl p-3 md:p-5 text-center border border-border cursor-pointer" onClick={() => router.push('/messages')}>
+              <p className="text-lg md:text-2xl font-bold text-foreground">5</p>
+              <p className="text-[10px] md:text-sm text-muted-foreground">Messages</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Menu Sections */}
-      <div className="px-4 py-2 pb-24">
-        <div className="max-w-lg mx-auto space-y-4">
+      <div className="px-4 md:px-6 py-2 md:py-6 pb-24 md:pb-12">
+        <div className="app-shell space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-5 md:items-start">
           {MENU_SECTIONS.map((section) => (
             <div key={section.title}>
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">
@@ -264,14 +264,14 @@ export default function ProfilePage() {
           {/* Logout */}
           <Button
             variant="outline"
-            className="w-full h-12 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive"
+            className="w-full md:col-span-2 h-12 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive"
             onClick={handleLogout}
           >
             <LogOut className="w-4 h-4 mr-2" /> Sign Out
           </Button>
 
-          <p className="text-center text-[10px] text-muted-foreground pt-2 pb-4">
-            LandHub v1.0.0
+          <p className="text-center text-[10px] text-muted-foreground pt-2 pb-4 md:col-span-2">
+            LandBid v1.0.0
           </p>
         </div>
       </div>

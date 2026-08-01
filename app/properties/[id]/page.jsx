@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
@@ -12,8 +13,19 @@ import { toast } from 'sonner'
 import {
   ArrowLeft, MapPin, Heart, Share2, Shield, FileText,
   TrendingUp, Gavel, MessageCircle, Phone, ChevronRight,
-  CheckCircle2, Clock, IndianRupee, Ruler, Loader2, AlertCircle
+  CheckCircle2, Clock, IndianRupee, Ruler, Loader2, AlertCircle, Lock, X
 } from 'lucide-react'
+
+
+// Leaflet needs the browser, so the map is loaded on the client only
+const PropertyMap = dynamic(() => import('@/components/map/property-map'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[280px] rounded-xl bg-muted flex items-center justify-center">
+      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+    </div>
+  ),
+})
 
 export default function PropertyDetailPage() {
   const router = useRouter()
@@ -23,6 +35,10 @@ export default function PropertyDetailPage() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [property, setProperty] = useState(null)
+  const [contactAccess, setContactAccess] = useState(null)
+  const [showContactRequest, setShowContactRequest] = useState(false)
+  const [contactMessage, setContactMessage] = useState('')
+  const [sendingRequest, setSendingRequest] = useState(false)
   const [bids, setBids] = useState([])
   const [highestBid, setHighestBid] = useState(0)
   const [saved, setSaved] = useState(false)
@@ -55,6 +71,8 @@ export default function PropertyDetailPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
   const isAuthenticated = !!token
   const canBid = isAuthenticated && user?.role === 'buyer' && !isOwner && property?.status === 'active'
+  const contactUnlocked = contactAccess?.unlocked ?? false
+  const contactRequestStatus = contactAccess?.requestStatus || null
 
   // My own bid in this property
   const myBid = bids.find((b) => b.buyerId === userId)
@@ -68,6 +86,7 @@ export default function PropertyDetailPage() {
       if (res.ok) {
         const data = await res.json()
         setProperty(data.property)
+        setContactAccess(data.contactAccess || null)
         setBids(data.bids || [])
         setHighestBid(data.highestBid || data.property?.basePrice || 0)
       }
@@ -85,6 +104,7 @@ export default function PropertyDetailPage() {
         if (res.ok) {
           const data = await res.json()
           setProperty(data.property)
+          setContactAccess(data.contactAccess || null)
           setBids(data.bids || [])
           setHighestBid(data.highestBid || data.property?.basePrice || 0)
         } else {
@@ -180,6 +200,59 @@ export default function PropertyDetailPage() {
       toast.error('Failed to place bid')
     } finally {
       setBidding(false)
+    }
+  }
+
+  /**
+   * "Message" is the single entry point for contacting a seller. If the buyer
+   * has been approved it opens the chat; otherwise it asks them to request
+   * access first.
+   */
+  const handleMessageSeller = async () => {
+    if (!isAuthenticated) {
+      toast.error('Please sign in to contact the seller')
+      router.push(`/login?redirect=/properties/${params.id}`)
+      return
+    }
+    if (isOwner) return
+
+    if (!contactUnlocked) {
+      setShowContactRequest(true)
+      return
+    }
+    router.push(`/messages?property=${params.id}`)
+  }
+
+  // Buyer: ask an admin to unlock the seller's contact details
+  const handleContactRequest = async () => {
+    setSendingRequest(true)
+    try {
+      const tk = localStorage.getItem('token')
+      const res = await fetch('/api/contact-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` },
+        body: JSON.stringify({ propertyId: params.id, message: contactMessage }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not send your request')
+
+      setContactAccess((prev) => ({ ...(prev || {}), requestStatus: data.status || 'pending' }))
+      setShowContactRequest(false)
+      if (data.status === 'approved') {
+        router.push(`/messages?property=${params.id}`)
+        return
+      }
+      setContactMessage('')
+      toast.success(
+        data.status === 'approved'
+          ? 'Contact already unlocked'
+          : 'Request sent — our team will review it shortly'
+      )
+      if (data.status === 'approved') refreshBids()
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setSendingRequest(false)
     }
   }
 
@@ -311,8 +384,8 @@ export default function PropertyDetailPage() {
   return (
     <div className="bg-background min-h-screen">
       {/* Top Bar */}
-      <div className="sticky top-14 z-30 bg-card/95 backdrop-blur-md border-b border-border px-4 py-2">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
+      <div className="sticky top-14 md:top-[72px] z-30 bg-card/95 backdrop-blur-md border-b border-border px-4 md:px-6 py-2">
+        <div className="app-shell-wide flex items-center justify-between">
           <button onClick={() => router.back()} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted transition-colors" aria-label="Go back">
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
@@ -328,8 +401,12 @@ export default function PropertyDetailPage() {
         </div>
       </div>
 
+      {/* Desktop two-column shell: content + sticky action sidebar */}
+      <div className="app-shell-wide lg:px-6 lg:pt-6 lg:flex lg:gap-8 lg:items-start">
+      <div className="lg:flex-1 lg:min-w-0">
+
       {/* Property Image / Hero */}
-      <div className="relative h-48 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+      <div className="relative h-48 md:h-80 lg:rounded-2xl lg:overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
         {property.images && property.images.length > 0 ? (
           <img src={property.images[0]} alt={property.title} className="w-full h-full object-cover" />
         ) : (
@@ -351,13 +428,13 @@ export default function PropertyDetailPage() {
       </div>
 
       {/* Property Info */}
-      <div className="px-4 -mt-4 relative z-10">
-        <div className="max-w-lg mx-auto">
-          <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-            <h2 className="text-lg font-bold text-foreground">{property.title}</h2>
+      <div className="px-4 md:px-6 lg:px-0 -mt-4 relative z-10">
+        <div className="app-shell-wide lg:max-w-none">
+          <div className="bg-card rounded-xl border border-border p-4 md:p-6 shadow-sm">
+            <h2 className="text-lg md:text-2xl font-bold text-foreground">{property.title}</h2>
             <div className="flex items-center gap-1 mt-1 text-muted-foreground">
               <MapPin className="w-3.5 h-3.5" />
-              <span className="text-sm">
+              <span className="text-sm md:text-base">
                 {property.location?.address}, {property.location?.city}, {property.location?.state}
               </span>
             </div>
@@ -384,14 +461,14 @@ export default function PropertyDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="px-4 mt-4">
-        <div className="max-w-lg mx-auto">
+      <div className="px-4 md:px-6 lg:px-0 mt-4 md:mt-6">
+        <div className="app-shell-wide lg:max-w-none">
           <div className="flex bg-muted rounded-xl p-1 gap-1">
             {['details', 'bids', 'docs'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${
+                className={`flex-1 py-2 md:py-2.5 rounded-lg text-xs md:text-sm font-semibold transition-colors ${
                   activeTab === tab
                     ? 'bg-card text-foreground shadow-sm'
                     : 'text-muted-foreground'
@@ -405,14 +482,53 @@ export default function PropertyDetailPage() {
       </div>
 
       {/* Tab Content */}
-      <div className="px-4 py-4 pb-36">
-        <div className="max-w-lg mx-auto space-y-4">
+      <div className="px-4 md:px-6 lg:px-0 py-4 md:py-6 pb-36 md:pb-32 lg:pb-8">
+        <div className="app-shell-wide lg:max-w-none space-y-4">
           {activeTab === 'details' && (
             <>
               <Card>
                 <CardContent className="pt-4 pb-4">
                   <h3 className="text-sm font-semibold text-foreground mb-2">Description</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">{property.description || 'No description provided'}</p>
+                </CardContent>
+              </Card>
+
+              {/* Where the land is */}
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <h3 className="text-sm font-semibold text-foreground mb-3">Location</h3>
+                  {Number.isFinite(property.location?.lat) && Number.isFinite(property.location?.lng) ? (
+                    <PropertyMap
+                      lat={property.location.lat}
+                      lng={property.location.lng}
+                      label={property.location.resolvedAddress || [
+                        property.location.address,
+                        property.location.city,
+                        property.location.state,
+                      ].filter(Boolean).join(', ')}
+                      height="300px"
+                    />
+                  ) : (
+                    <div className="rounded-xl bg-muted p-5 text-center">
+                      <MapPin className="w-7 h-7 text-muted-foreground mx-auto" />
+                      <p className="text-sm font-medium text-foreground mt-2">No map pin on this listing</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {[property.location?.address, property.location?.city, property.location?.state]
+                          .filter(Boolean).join(', ') || 'Location not provided'}
+                      </p>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                          [property.location?.address, property.location?.city, property.location?.state, property.location?.pincode]
+                            .filter(Boolean).join(', ')
+                        )}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-block text-xs font-medium text-primary hover:underline mt-2"
+                      >
+                        Search this address on Google Maps
+                      </a>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -439,15 +555,15 @@ export default function PropertyDetailPage() {
               <Card>
                 <CardContent className="pt-4 pb-4">
                   <h3 className="text-sm font-semibold text-foreground mb-3">Seller Information</h3>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <span className="text-sm font-bold text-primary">
                           {property.seller?.name?.charAt(0) || 'S'}
                         </span>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{property.seller?.name || 'Seller'}</p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{property.seller?.name || 'Seller'}</p>
                         {property.seller?.verified && (
                           <div className="flex items-center gap-1">
                             <Shield className="w-3 h-3 text-primary" />
@@ -456,25 +572,63 @@ export default function PropertyDetailPage() {
                         )}
                       </div>
                     </div>
-                    {property.seller?.phone && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => router.push('/messages')}
-                          className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center"
-                          aria-label="Message seller"
-                        >
-                          <MessageCircle className="w-4 h-4 text-primary" />
-                        </button>
-                        <a
-                          href={`tel:${property.seller.phone}`}
-                          className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center"
-                          aria-label="Call seller"
-                        >
-                          <Phone className="w-4 h-4 text-accent" />
-                        </a>
-                      </div>
-                    )}
+
                   </div>
+
+                  {/* Only the seller's name is public. Message is the single
+                      entry point — it asks for approval until access is granted. */}
+                  {!isOwner && (
+                    <div className="mt-4">
+                      <div className="flex gap-2">
+                        <Button
+                          variant={contactUnlocked ? 'default' : 'outline'}
+                          className="flex-1"
+                          onClick={handleMessageSeller}
+                          disabled={contactRequestStatus === 'pending' && !contactUnlocked}
+                        >
+                          <MessageCircle className="w-4 h-4 mr-2" />
+                          {contactUnlocked
+                            ? 'Message seller'
+                            : contactRequestStatus === 'pending'
+                            ? 'Request pending'
+                            : 'Message'}
+                        </Button>
+                        {contactUnlocked && property.seller?.phone && (
+                          <a
+                            href={`tel:+91${property.seller.phone}`}
+                            className="h-10 px-4 rounded-md border border-border flex items-center justify-center gap-2 text-sm font-medium hover:bg-muted transition-colors"
+                          >
+                            <Phone className="w-4 h-4 text-accent" /> Call
+                          </a>
+                        )}
+                      </div>
+
+                      {contactUnlocked ? (
+                        property.seller?.phone && (
+                          <p className="text-[11px] text-muted-foreground mt-2">
+                            +91 {property.seller.phone} ·{' '}
+                            {contactAccess?.reason === 'winning_bid'
+                              ? 'unlocked because your bid was selected'
+                              : 'approved by the LandBid team'}
+                          </p>
+                        )
+                      ) : contactRequestStatus === 'pending' ? (
+                        <p className="text-[11px] text-accent mt-2 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" /> Our team is reviewing your request
+                        </p>
+                      ) : contactRequestStatus === 'rejected' ? (
+                        <p className="text-[11px] text-destructive mt-2 flex items-start gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-px" />
+                          {contactAccess?.adminNote || 'Your contact request was declined.'}
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground mt-2 flex items-start gap-1.5">
+                          <Lock className="w-3.5 h-3.5 flex-shrink-0 mt-px" />
+                          Chat and phone open up once our team approves your request.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -507,8 +661,8 @@ export default function PropertyDetailPage() {
                 </div>
               )}
 
-              {/* Highest Bid Hero Card */}
-              <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-5 text-primary-foreground shadow-lg">
+              {/* Highest Bid Hero Card — the sidebar carries this on large screens */}
+              <div className="lg:hidden rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-5 text-primary-foreground shadow-lg">
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-wider">
                     {bids.length > 0 ? 'Current Highest Bid' : 'Starting Price'}
@@ -713,19 +867,33 @@ export default function PropertyDetailPage() {
                 {property.documents && property.documents.length > 0 ? (
                   <div className="space-y-3">
                     {property.documents.map((doc, i) => (
-                      <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${doc.status === 'verified' ? 'bg-primary/10' : 'bg-accent/10'}`}>
+                      <div key={i} className="flex items-center justify-between gap-3 py-2 border-b border-border last:border-0">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${doc.status === 'verified' ? 'bg-primary/10' : 'bg-accent/10'}`}>
                             <FileText className={`w-4 h-4 ${doc.status === 'verified' ? 'text-primary' : 'text-accent'}`} />
                           </div>
-                          <div>
-                            <p className="text-sm font-medium text-foreground">{doc.name}</p>
-                            <p className="text-[10px] text-muted-foreground capitalize">{doc.status?.replace('_', ' ') || 'pending'}</p>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{doc.label || doc.name || 'Document'}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {doc.fileName || doc.status?.replace('_', ' ') || 'Uploaded'}
+                            </p>
                           </div>
                         </div>
-                        <Badge variant={doc.status === 'verified' ? 'default' : 'secondary'} className={`text-[10px] ${doc.status === 'verified' ? 'bg-primary text-primary-foreground' : ''}`}>
-                          {doc.status === 'verified' ? 'Verified' : 'Pending'}
-                        </Badge>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {doc.url && (
+                            <a
+                              href={doc.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2.5 py-1 rounded-lg bg-muted text-[11px] font-semibold text-foreground hover:bg-muted/70 transition-colors"
+                            >
+                              View
+                            </a>
+                          )}
+                          <Badge variant={doc.status === 'verified' ? 'default' : 'secondary'} className={`text-[10px] ${doc.status === 'verified' ? 'bg-primary text-primary-foreground' : ''}`}>
+                            {doc.status === 'verified' ? 'Verified' : 'Pending'}
+                          </Badge>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -737,6 +905,131 @@ export default function PropertyDetailPage() {
           )}
         </div>
       </div>
+
+      </div>{/* /left column */}
+
+      {/* Desktop Action Sidebar */}
+      <aside className="hidden lg:block w-80 flex-shrink-0 sticky top-[96px] space-y-4">
+        <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-6 text-primary-foreground shadow-lg">
+          <p className="text-xs font-medium text-primary-foreground/70 uppercase tracking-wider">
+            {bids.length > 0 ? 'Current Highest Bid' : 'Starting Price'}
+          </p>
+          <p className="text-4xl font-extrabold tracking-tight mt-1">₹{formatPrice(highestBid)}</p>
+          <p className="text-xs text-primary-foreground/70 mt-1">
+            Base price: ₹{formatPrice(property?.basePrice)}
+            {bids.length > 0 && ` · ${bids.length} bid${bids.length !== 1 ? 's' : ''}`}
+          </p>
+
+          {isOwner ? (
+            property?.status === 'active' && (
+              <button
+                onClick={handleCloseBidding}
+                disabled={closingBidding}
+                className="mt-5 w-full bg-white/20 border border-white/30 text-white font-semibold rounded-xl py-3 text-sm flex items-center justify-center gap-2 hover:bg-white/30 transition-all"
+              >
+                {closingBidding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+                Close Bidding
+              </button>
+            )
+          ) : property?.status === 'closed' ? (
+            <div className="mt-5 w-full bg-white/15 rounded-xl py-3 text-sm font-semibold text-center">
+              Bidding Closed
+            </div>
+          ) : property?.status === 'pending' ? (
+            <div className="mt-5 w-full bg-white/15 rounded-xl py-3 text-sm font-semibold text-center">
+              Under Review
+            </div>
+          ) : !isAuthenticated ? (
+            <button
+              onClick={() => router.push('/create-account')}
+              className="mt-5 w-full bg-white text-primary font-bold rounded-xl py-3 text-sm flex items-center justify-center gap-2 hover:bg-white/90 transition-all"
+            >
+              <Gavel className="w-4 h-4" /> Sign Up to Bid
+            </button>
+          ) : myBid ? (
+            <button
+              onClick={() => { setIncreaseAmount(''); setShowIncreaseForm(true) }}
+              className="mt-5 w-full bg-white text-primary font-bold rounded-xl py-3 text-sm flex items-center justify-center gap-2 hover:bg-white/90 transition-all"
+            >
+              <TrendingUp className="w-4 h-4" /> Increase Bid · ₹{formatPrice(myBid.amount)}
+            </button>
+          ) : canBid ? (
+            <button
+              onClick={() => setShowBidForm(true)}
+              className="mt-5 w-full bg-white text-primary font-bold rounded-xl py-3 text-sm flex items-center justify-center gap-2 hover:bg-white/90 transition-all"
+            >
+              <Gavel className="w-4 h-4" /> Place Your Bid
+            </button>
+          ) : (
+            <div className="mt-5 w-full bg-white/15 rounded-xl py-3 text-sm font-semibold text-center">
+              Buyers Only
+            </div>
+          )}
+        </div>
+
+        {/* Seller quick contact */}
+        <div className="rounded-2xl bg-card border border-border p-5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Seller</p>
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <span className="text-base font-bold text-primary">{property.seller?.name?.charAt(0) || 'S'}</span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground truncate">{property.seller?.name || 'Seller'}</p>
+              {property.seller?.verified && (
+                <span className="text-[11px] text-primary font-medium flex items-center gap-1">
+                  <Shield className="w-3 h-3" /> Verified Seller
+                </span>
+              )}
+            </div>
+          </div>
+          {/* Contact opens only after admin approval or a winning bid */}
+          {!isOwner && (
+            <div className="mt-4">
+              <div className="flex gap-2">
+                <Button
+                  variant={contactUnlocked ? 'default' : 'outline'}
+                  className="flex-1 rounded-xl"
+                  onClick={handleMessageSeller}
+                  disabled={contactRequestStatus === 'pending' && !contactUnlocked}
+                >
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  {contactUnlocked
+                    ? 'Message'
+                    : contactRequestStatus === 'pending'
+                    ? 'Pending'
+                    : 'Message'}
+                </Button>
+                {contactUnlocked && property.seller?.phone && (
+                  <a
+                    href={`tel:+91${property.seller.phone}`}
+                    className="w-11 h-10 rounded-xl border border-border flex items-center justify-center hover:bg-muted transition-colors"
+                    aria-label="Call seller"
+                  >
+                    <Phone className="w-4 h-4 text-accent" />
+                  </a>
+                )}
+              </div>
+
+              {contactUnlocked ? (
+                property.seller?.phone && (
+                  <p className="text-[11px] text-muted-foreground mt-2">+91 {property.seller.phone}</p>
+                )
+              ) : (
+                <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed flex items-start gap-1.5">
+                  <Lock className="w-3.5 h-3.5 flex-shrink-0 mt-px" />
+                  {contactRequestStatus === 'pending'
+                    ? 'Our team is reviewing your request.'
+                    : contactRequestStatus === 'rejected'
+                    ? 'Your contact request was declined.'
+                    : 'Chat and phone unlock after approval.'}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </aside>
+      </div>{/* /desktop shell */}
 
       {/* Bid Form Overlay */}
       {showBidForm && (
@@ -820,6 +1113,71 @@ export default function PropertyDetailPage() {
                   </Button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Contact request (Buyer view) */}
+      {showContactRequest && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center"
+          onClick={() => setShowContactRequest(false)}
+        >
+          <div
+            className="bg-card w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Lock className="w-5 h-5 text-primary" />
+              </div>
+              <button
+                onClick={() => setShowContactRequest(false)}
+                className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+
+            <h3 className="text-lg font-bold text-foreground mt-4">Request seller contact</h3>
+            <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+              Our team reviews every request before sharing a seller&apos;s details. Tell us briefly why
+              you want to connect — serious enquiries are approved faster.
+            </p>
+
+            <div className="rounded-xl bg-muted/60 p-3 mt-4">
+              <p className="text-xs font-medium text-foreground truncate">{property?.title}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {[property?.location?.city, property?.location?.state].filter(Boolean).join(', ')}
+                {myBid ? ` · Your bid: ₹${formatPrice(myBid.amount)}` : ' · No bid placed yet'}
+              </p>
+            </div>
+
+            <Textarea
+              value={contactMessage}
+              onChange={(e) => setContactMessage(e.target.value)}
+              rows={3}
+              maxLength={500}
+              placeholder="e.g. I am ready to visit the site this week and can pay in full."
+              className="mt-4 resize-none"
+            />
+
+            {!myBid && (
+              <p className="text-[11px] text-accent mt-2 flex items-start gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-px" />
+                Requests with a bid on record are approved much faster.
+              </p>
+            )}
+
+            <div className="flex gap-3 mt-5">
+              <Button variant="outline" className="flex-1" onClick={() => setShowContactRequest(false)}>
+                Cancel
+              </Button>
+              <Button className="flex-1" onClick={handleContactRequest} disabled={sendingRequest}>
+                {sendingRequest ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send request'}
+              </Button>
             </div>
           </div>
         </div>
@@ -967,9 +1325,9 @@ export default function PropertyDetailPage() {
         </div>
       )}
 
-      {/* Fixed Bottom Action */}
-      <div className="fixed bottom-16 left-0 right-0 z-30 bg-card/95 backdrop-blur-md border-t border-border px-4 py-3 safe-bottom">
-        <div className="max-w-lg mx-auto">
+      {/* Fixed Bottom Action — replaced by the sticky sidebar on large screens */}
+      <div className="lg:hidden fixed bottom-16 md:bottom-0 left-0 right-0 z-30 bg-card/95 backdrop-blur-md border-t border-border px-4 md:px-6 py-3 safe-bottom">
+        <div className="app-shell-wide">
           {isOwner ? (
             <div className="flex items-center gap-2 justify-center py-1">
               <Shield className="w-4 h-4 text-primary" />

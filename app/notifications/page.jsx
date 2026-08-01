@@ -29,7 +29,7 @@ const NOTIFICATIONS = [
     time: '5 hours ago', read: true,
   },
   {
-    id: '5', type: 'system', title: 'Welcome to LandHub',
+    id: '5', type: 'system', title: 'Welcome to LandBid',
     message: 'Complete your profile to get verified badge and attract more buyers',
     time: '1 day ago', read: true,
   },
@@ -74,10 +74,10 @@ export default function NotificationsPage() {
 
   return (
     <div className="bg-background min-h-screen">
-      <div className="px-4 pt-4 pb-2">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
+      <div className="px-4 md:px-6 pt-4 md:pt-10 pb-2">
+        <div className="app-shell-narrow flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-foreground">Notifications</h1>
+            <h1 className="text-xl md:text-3xl font-bold text-foreground">Notifications</h1>
             {unreadCount > 0 && (
               <p className="text-xs text-muted-foreground">{unreadCount} unread</p>
             )}
@@ -90,8 +90,8 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      <div className="px-4 py-2 pb-24">
-        <div className="max-w-lg mx-auto space-y-2">
+      <div className="px-4 md:px-6 py-2 md:py-5 pb-24 md:pb-12">
+        <div className="app-shell-narrow space-y-2 md:space-y-3">
           {notifications.map((notif) => {
             const Icon = iconMap[notif.type] || Bell
             return (
@@ -100,21 +100,21 @@ export default function NotificationsPage() {
                 className={`cursor-pointer transition-colors ${!notif.read ? 'border-primary/20 bg-primary/[0.02]' : ''}`}
                 onClick={() => markRead(notif.id)}
               >
-                <CardContent className="pt-3 pb-3 px-3">
-                  <div className="flex items-start gap-3">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${colorMap[notif.type] || 'bg-muted text-muted-foreground'}`}>
-                      <Icon className="w-4 h-4" />
+                <CardContent className="pt-3 pb-3 px-3 md:pt-4 md:pb-4 md:px-5">
+                  <div className="flex items-start gap-3 md:gap-4">
+                    <div className={`w-9 h-9 md:w-11 md:h-11 rounded-full flex items-center justify-center flex-shrink-0 ${colorMap[notif.type] || 'bg-muted text-muted-foreground'}`}>
+                      <Icon className="w-4 h-4 md:w-5 md:h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <p className={`text-sm ${!notif.read ? 'font-semibold text-foreground' : 'font-medium text-foreground'}`}>
+                        <p className={`text-sm md:text-base ${!notif.read ? 'font-semibold text-foreground' : 'font-medium text-foreground'}`}>
                           {notif.title}
                         </p>
                         {!notif.read && (
                           <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-1.5" />
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notif.message}</p>
+                      <p className="text-xs md:text-sm text-muted-foreground mt-0.5 line-clamp-2">{notif.message}</p>
                       <div className="flex items-center gap-1 mt-1.5 text-[10px] text-muted-foreground">
                         <Clock className="w-2.5 h-2.5" /> {notif.time}
                       </div>
