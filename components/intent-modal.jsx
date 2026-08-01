@@ -5,7 +5,7 @@ import { Home, Building2, X, ArrowRight, ArrowLeft, MapPin, Phone, CheckCircle2,
 
 const T = {
   en: {
-    welcome: 'Welcome to MyZameen',
+    welcome: 'Welcome to LandBid',
     subtitle: "Tell us what you'd like to do — we'll personalise your experience.",
     buyTitle: 'Buy Land',
     buyDesc: 'Browse, bid & buy verified plots',
@@ -37,7 +37,7 @@ const T = {
     errServer: 'Something went wrong. Please try again.',
   },
   hi: {
-    welcome: 'MyZameen में आपका स्वागत है',
+    welcome: 'LandBid में आपका स्वागत है',
     subtitle: 'हमें बताएं आप क्या करना चाहते हैं — हम आपका अनुभव व्यक्तिगत बनाएंगे।',
     buyTitle: 'जमीन खरीदें',
     buyDesc: 'सत्यापित प्लॉट ब्राउज़ करें, बोली लगाएं और खरीदें',
