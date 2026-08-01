@@ -3,6 +3,14 @@
 import { usePathname } from 'next/navigation'
 import BrandLogo from '@/components/brand-logo'
 import Link from 'next/link'
+import { Mail, Phone } from 'lucide-react'
+
+// Configured in .env.local so the same details drive the footer and the widget
+const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || ''
+const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || ''
+
+/** 9145800263 -> 91458 00263 */
+const prettyPhone = (n) => (n.length === 10 ? `${n.slice(0, 5)} ${n.slice(5)}` : n)
 
 const FOOTER_SECTIONS = [
   {
@@ -47,6 +55,29 @@ export default function SiteFooter() {
             <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
               Verified land listings, transparent bidding and secure transactions across India.
             </p>
+
+            <div className="mt-4 space-y-2">
+              {CONTACT_EMAIL && (
+                <a
+                  href={`mailto:${CONTACT_EMAIL}`}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <Mail className="w-4 h-4 flex-shrink-0" />
+                  <span className="break-all">{CONTACT_EMAIL}</span>
+                </a>
+              )}
+              {WHATSAPP_NUMBER && (
+                <a
+                  href={`https://wa.me/91${WHATSAPP_NUMBER}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <Phone className="w-4 h-4 flex-shrink-0" />
+                  +91 {prettyPhone(WHATSAPP_NUMBER)}
+                </a>
+              )}
+            </div>
           </div>
 
           {FOOTER_SECTIONS.map((section) => (

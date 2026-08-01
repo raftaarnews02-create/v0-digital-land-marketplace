@@ -15,8 +15,9 @@ import {
  * never complete a listing or a bid.
  */
 
-// Set NEXT_PUBLIC_WHATSAPP_NUMBER in .env.local (10 digits, no +91)
+// Set in .env.local — WhatsApp is 10 digits, no +91
 const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || ''
+const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || ''
 
 const INTENTS = [
   { value: 'buy', label: 'Buy land' },
@@ -224,16 +225,26 @@ export default function QueryWidget() {
                   {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Request a callback'}
                 </Button>
 
-                {whatsappHref && (
-                  <a
-                    href={whatsappHref}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-center gap-2 mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Phone className="w-3.5 h-3.5" /> Prefer WhatsApp? Message us instead
-                  </a>
-                )}
+                <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 mt-3">
+                  {whatsappHref && (
+                    <a
+                      href={whatsappHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Phone className="w-3.5 h-3.5" /> WhatsApp us
+                    </a>
+                  )}
+                  {CONTACT_EMAIL && (
+                    <a
+                      href={`mailto:${CONTACT_EMAIL}`}
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Mail className="w-3.5 h-3.5" /> Email us
+                    </a>
+                  )}
+                </div>
               </form>
             )}
           </div>
